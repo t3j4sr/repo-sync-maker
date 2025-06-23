@@ -1,24 +1,61 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>repo-sync-maker</title>
-    <meta name="description" content="Lovable Generated Project" />
-    <meta name="author" content="Lovable" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Lucky Shopkeeper Draws</title>
+    <meta name="description" content="Lucky Draw Management System for Shopkeepers" />
+    <meta name="author" content="Lucky Shopkeeper Draws" />
 
-    <meta property="og:title" content="repo-sync-maker" />
-    <meta property="og:description" content="Lovable Generated Project" />
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#8B5CF6" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Lucky Shopkeeper" />
+
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon.ico" />
+
+    <meta property="og:title" content="Lucky Shopkeeper Draws" />
+    <meta property="og:description" content="Lucky Draw Management System for Shopkeepers" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <style>
+      /* Mobile-first responsive styles */
+      body {
+        margin: 0;
+        padding: 0;
+        overscroll-behavior: none;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      /* Prevent zoom on form inputs */
+      input, select, textarea {
+        font-size: 16px;
+      }
+      
+      /* Safe area handling for notched devices */
+      .safe-area-top {
+        padding-top: env(safe-area-inset-top);
+      }
+      
+      .safe-area-bottom {
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+    </style>
   </head>
 
   <body>
     <div id="root"></div>
+    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
+    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

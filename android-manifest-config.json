@@ -1,0 +1,28 @@
+
+{
+  "package": "app.lovable.luckyshopkeeper",
+  "name": "Lucky Shopkeeper Draws",
+  "activity": {
+    "exported": true,
+    "launchMode": "singleTask",
+    "theme": "@style/AppTheme.NoActionBarLaunch",
+    "orientation": "portrait"
+  },
+  "permissions": [
+    "android.permission.INTERNET",
+    "android.permission.ACCESS_NETWORK_STATE",
+    "android.permission.ACCESS_WIFI_STATE"
+  ],
+  "features": [
+    {
+      "name": "android.hardware.touchscreen",
+      "required": false
+    },
+    {
+      "name": "android.software.leanback",
+      "required": false
+    }
+  ],
+  "targetSdk": 34,
+  "minSdk": 24
+}
