@@ -1,10 +1,12 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogOut, User, Store, Phone, Calendar, DollarSign, ShoppingCart, ArrowLeft } from "lucide-react";
+import { LogOut, User, Store, Phone, Calendar, DollarSign, ShoppingCart, ArrowLeft, Edit2, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Profile {
@@ -32,6 +34,11 @@ const Profile = () => {
     totalCustomers: 0
   });
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedProfile, setEditedProfile] = useState({
+    shopkeeper_name: "",
+    shop_name: ""
+  });
 
   useEffect(() => {
     if (user) {
@@ -79,31 +86,17 @@ const Profile = () => {
           throw createError;
         }
         setProfile(newProfile);
+        setEditedProfile({
+          shopkeeper_name: newProfile.shopkeeper_name,
+          shop_name: newProfile.shop_name
+        });
       } else {
         console.log('Profile found:', data);
-        // If profile exists but has empty values, update with user metadata
-        if ((!data.shopkeeper_name || data.shopkeeper_name === 'Unknown User') && user.user_metadata?.shopkeeperName) {
-          const { data: updatedProfile, error: updateError } = await supabase
-            .from('profiles')
-            .update({
-              shopkeeper_name: user.user_metadata.shopkeeperName,
-              shop_name: user.user_metadata.shopName || data.shop_name,
-              phone: user.phone || user.user_metadata?.phone || data.phone
-            })
-            .eq('id', user.id)
-            .select()
-            .single();
-
-          if (updateError) {
-            console.error('Error updating profile:', updateError);
-            setProfile(data);
-          } else {
-            console.log('Profile updated with metadata:', updatedProfile);
-            setProfile(updatedProfile);
-          }
-        } else {
-          setProfile(data);
-        }
+        setProfile(data);
+        setEditedProfile({
+          shopkeeper_name: data.shopkeeper_name,
+          shop_name: data.shop_name
+        });
       }
     } catch (error) {
       console.error('Error in fetchProfile:', error);
@@ -125,7 +118,7 @@ const Profile = () => {
       const { data: purchasesData, error: purchasesError } = await supabase
         .from('purchases')
         .select('amount')
-        .eq('user_id', user.id); // Critical: Filter by current user only
+        .eq('user_id', user.id);
 
       if (purchasesError) {
         console.error('Error fetching purchases:', purchasesError);
@@ -141,7 +134,7 @@ const Profile = () => {
       const { count: customersCount, error: customersError } = await supabase
         .from('customers')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id); // Critical: Filter by current user only
+        .eq('user_id', user.id);
 
       if (customersError) {
         console.error('Error fetching customers count:', customersError);
@@ -165,6 +158,67 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!profile || !user) return;
+
+    if (!editedProfile.shopkeeper_name.trim() || !editedProfile.shop_name.trim()) {
+      toast({
+        title: "Error",
+        description: "Shopkeeper name and shop name cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          shopkeeper_name: editedProfile.shopkeeper_name.trim(),
+          shop_name: editedProfile.shop_name.trim()
+        })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('Error updating profile:', error);
+        throw error;
+      }
+
+      // Update local state
+      setProfile(prev => prev ? {
+        ...prev,
+        shopkeeper_name: editedProfile.shopkeeper_name.trim(),
+        shop_name: editedProfile.shop_name.trim()
+      } : null);
+
+      setIsEditing(false);
+      toast({
+        title: "Success",
+        description: "Profile updated successfully!",
+      });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update profile",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    if (profile) {
+      setEditedProfile({
+        shopkeeper_name: profile.shopkeeper_name,
+        shop_name: profile.shop_name
+      });
+    }
+    setIsEditing(false);
   };
 
   const handleSignOut = async () => {
@@ -238,26 +292,82 @@ const Profile = () => {
           {/* Profile Information */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
-                Account Details
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Account Details
+                </CardTitle>
+                {!isEditing ? (
+                  <Button
+                    onClick={() => setIsEditing(true)}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    Edit
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleSaveProfile}
+                      size="sm"
+                      className="flex items-center gap-2"
+                      disabled={loading}
+                    >
+                      <Save className="w-4 h-4" />
+                      Save
+                    </Button>
+                    <Button
+                      onClick={handleCancelEdit}
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <X className="w-4 h-4" />
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {profile && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center gap-3">
                     <User className="w-5 h-5 text-gray-500" />
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm text-gray-500">Shopkeeper Name</p>
-                      <p className="font-medium">{profile.shopkeeper_name}</p>
+                      {isEditing ? (
+                        <Input
+                          value={editedProfile.shopkeeper_name}
+                          onChange={(e) => setEditedProfile(prev => ({
+                            ...prev,
+                            shopkeeper_name: e.target.value
+                          }))}
+                          placeholder="Enter shopkeeper name"
+                        />
+                      ) : (
+                        <p className="font-medium">{profile.shopkeeper_name}</p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Store className="w-5 h-5 text-gray-500" />
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm text-gray-500">Shop Name</p>
-                      <p className="font-medium">{profile.shop_name}</p>
+                      {isEditing ? (
+                        <Input
+                          value={editedProfile.shop_name}
+                          onChange={(e) => setEditedProfile(prev => ({
+                            ...prev,
+                            shop_name: e.target.value
+                          }))}
+                          placeholder="Enter shop name"
+                        />
+                      ) : (
+                        <p className="font-medium">{profile.shop_name}</p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -271,7 +381,11 @@ const Profile = () => {
                     <Calendar className="w-5 h-5 text-gray-500" />
                     <div>
                       <p className="text-sm text-gray-500">Member Since</p>
-                      <p className="font-medium">{formatDate(profile.created_at)}</p>
+                      <p className="font-medium">{new Date(profile.created_at).toLocaleDateString('en-IN', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}</p>
                     </div>
                   </div>
                 </div>
@@ -288,7 +402,10 @@ const Profile = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  {formatCurrency(salesData.totalSales)}
+                  {new Intl.NumberFormat('en-IN', {
+                    style: 'currency',
+                    currency: 'INR',
+                  }).format(salesData.totalSales)}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   From your customers only
@@ -338,8 +455,14 @@ const Profile = () => {
                   <span className="text-gray-600">Your Average Transaction Value</span>
                   <span className="font-medium">
                     {salesData.totalTransactions > 0 
-                      ? formatCurrency(salesData.totalSales / salesData.totalTransactions)
-                      : formatCurrency(0)
+                      ? new Intl.NumberFormat('en-IN', {
+                          style: 'currency',
+                          currency: 'INR',
+                        }).format(salesData.totalSales / salesData.totalTransactions)
+                      : new Intl.NumberFormat('en-IN', {
+                          style: 'currency',
+                          currency: 'INR',
+                        }).format(0)
                     }
                   </span>
                 </div>
@@ -347,8 +470,14 @@ const Profile = () => {
                   <span className="text-gray-600">Your Average Sales per Customer</span>
                   <span className="font-medium">
                     {salesData.totalCustomers > 0 
-                      ? formatCurrency(salesData.totalSales / salesData.totalCustomers)
-                      : formatCurrency(0)
+                      ? new Intl.NumberFormat('en-IN', {
+                          style: 'currency',
+                          currency: 'INR',
+                        }).format(salesData.totalSales / salesData.totalCustomers)
+                      : new Intl.NumberFormat('en-IN', {
+                          style: 'currency',
+                          currency: 'INR',
+                        }).format(0)
                     }
                   </span>
                 </div>

@@ -217,25 +217,54 @@ export const AuthForm = () => {
           return;
         }
 
-        // CRITICAL FIX: Set the password AFTER successful OTP verification
-        console.log('Setting password for new shopkeeper:', formattedPhone);
-        const { error: passwordError } = await supabase.rpc(
-          'set_shopkeeper_password',
-          { 
-            p_phone: formattedPhone, 
-            p_password: password 
-          }
-        );
+        // CRITICAL: Create the profile immediately after OTP verification
+        console.log('Creating profile with data:', {
+          phone: formattedPhone,
+          shopkeeperName: shopkeeperName.trim(),
+          shopName: shopName.trim()
+        });
 
-        if (passwordError) {
-          console.error('Password set error:', passwordError);
-          toast({
-            title: "Warning",
-            description: "Account created but password setup failed. Please contact support.",
-            variant: "destructive",
-          });
-        } else {
-          console.log('Password set successfully for:', formattedPhone);
+        // Get the current user after verification
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          // Create profile in database
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              phone: formattedPhone,
+              shopkeeper_name: shopkeeperName.trim(),
+              shop_name: shopName.trim(),
+              password_hash: null // Will be set below
+            });
+
+          if (profileError) {
+            console.error('Profile creation error:', profileError);
+          } else {
+            console.log('Profile created successfully');
+          }
+
+          // Set the password using the RPC function
+          console.log('Setting password for new shopkeeper:', formattedPhone);
+          const { error: passwordError } = await supabase.rpc(
+            'set_shopkeeper_password',
+            { 
+              p_phone: formattedPhone, 
+              p_password: password 
+            }
+          );
+
+          if (passwordError) {
+            console.error('Password set error:', passwordError);
+            toast({
+              title: "Warning",
+              description: "Account created but password setup failed. Please contact support.",
+              variant: "destructive",
+            });
+          } else {
+            console.log('Password set successfully for:', formattedPhone);
+          }
         }
 
         // Send registration SMS
@@ -327,13 +356,25 @@ export const AuthForm = () => {
           </p>
           <div className="space-y-3">
             <Button
-              onClick={handleSignupRedirect}
+              onClick={() => {
+                setShowSignupPrompt(false);
+                setIsLogin(false);
+              }}
               className="w-full bg-purple-600 hover:bg-purple-700"
             >
               Create Account
             </Button>
             <Button
-              onClick={resetForm}
+              onClick={() => {
+                setPhone("");
+                setPassword("");
+                setShopkeeperName("");
+                setShopName("");
+                setOtp("");
+                setOtpSent(false);
+                setShowSignupPrompt(false);
+                setShowForgotPassword(false);
+              }}
               variant="outline"
               className="w-full"
             >
@@ -391,7 +432,11 @@ export const AuthForm = () => {
             <div className="text-center space-y-2">
               <button
                 type="button"
-                onClick={handleResendOtp}
+                onClick={async () => {
+                  setOtp("");
+                  setOtpSent(false);
+                  await handleSendOtp({ preventDefault: () => {} } as React.FormEvent);
+                }}
                 className="text-purple-600 hover:text-purple-700 font-medium"
                 disabled={loading}
               >

@@ -34,83 +34,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('Auth state change:', event, session?.user?.id);
       setUser(session?.user ?? null)
       setLoading(false)
-      
-      // If user just signed up or signed in, ensure their profile exists
-      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-        setTimeout(async () => {
-          // Only create profile for non-customers (shopkeepers)
-          if (!session.user.user_metadata?.isCustomer) {
-            await ensureProfileExists(session.user);
-          }
-        }, 1000);
-      }
     })
 
     return () => subscription.unsubscribe()
   }, [])
-
-  const ensureProfileExists = async (user: User) => {
-    try {
-      console.log('Ensuring profile exists for user:', user.id);
-      console.log('User metadata:', user.user_metadata);
-      
-      // Check if profile exists
-      const { data: existingProfile, error } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error checking profile:', error);
-        return;
-      }
-
-      if (!existingProfile) {
-        // Profile doesn't exist, create it with proper metadata
-        console.log('Creating profile for user:', user.id);
-        const profileData = {
-          id: user.id,
-          phone: user.phone || user.user_metadata?.phone || '',
-          shopkeeper_name: user.user_metadata?.shopkeeperName || user.user_metadata?.shopkeeper_name || '',
-          shop_name: user.user_metadata?.shopName || user.user_metadata?.shop_name || ''
-        };
-        
-        console.log('Profile data to insert:', profileData);
-        
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert(profileData);
-
-        if (insertError) {
-          console.error('Error creating profile:', insertError);
-        } else {
-          console.log('Profile created successfully');
-        }
-      } else {
-        console.log('Profile already exists');
-        // Update profile with latest metadata if available
-        if (user.user_metadata?.shopkeeperName && user.user_metadata?.shopName) {
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({
-              shopkeeper_name: user.user_metadata.shopkeeperName,
-              shop_name: user.user_metadata.shopName,
-              phone: user.phone || user.user_metadata?.phone || ''
-            })
-            .eq('id', user.id);
-          
-          if (updateError) {
-            console.error('Error updating profile:', updateError);
-          } else {
-            console.log('Profile updated with new metadata');
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error ensuring profile exists:', error);
-    }
-  };
 
   const normalizePhone = (phone: string) => {
     // Remove all non-digit characters
@@ -171,53 +98,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     console.log('Normalized phone:', normalizedPhone);
     
     try {
-      // Try multiple phone formats to find the shopkeeper
-      const phoneFormats = [
-        normalizedPhone,           // +918971312795
-        normalizedPhone.replace('+', ''),  // 918971312795
-        phone,                     // Original input
-        normalizedPhone.substring(3), // 8971312795 (without +91)
-      ];
+      // Check if user exists with the normalized phone number
+      console.log('Checking profile existence for:', normalizedPhone);
       
-      console.log('Trying phone formats:', phoneFormats);
-      
-      let shopkeeperData = null;
-      let workingFormat = null;
-      
-      for (const phoneFormat of phoneFormats) {
-        console.log(`Trying format: ${phoneFormat}`);
-        
-        const { data, error } = await supabase.rpc(
-          'verify_shopkeeper_login',
-          { 
-            p_phone: phoneFormat, 
-            p_password: password 
-          }
-        );
-        
-        console.log(`Result for ${phoneFormat}:`, { data, error });
-        
-        if (!error && data && data.length > 0) {
-          shopkeeperData = data;
-          workingFormat = phoneFormat;
-          console.log(`SUCCESS with format: ${phoneFormat}`, data[0]);
-          break;
+      const { data: shopkeeperData, error: verifyError } = await supabase.rpc(
+        'verify_shopkeeper_login',
+        { 
+          p_phone: normalizedPhone, 
+          p_password: password 
         }
-      }
+      );
 
-      if (!shopkeeperData || shopkeeperData.length === 0) {
-        console.log('No shopkeeper found with any phone format');
-        
-        // Let's also check what's actually in the database
-        console.log('Checking all profiles in database...');
-        const { data: allProfiles, error: profileError } = await supabase
-          .from('profiles')
-          .select('phone, shopkeeper_name, shop_name')
-          .limit(10);
-        
-        console.log('All profiles:', allProfiles);
-        console.log('Profile query error:', profileError);
-        
+      console.log('Shopkeeper verification result:', { shopkeeperData, verifyError });
+
+      if (verifyError || !shopkeeperData || shopkeeperData.length === 0) {
+        console.log('No shopkeeper found or invalid password');
         return { error: { message: 'Invalid phone number or password' } };
       }
 
