@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext } from 'react'
 import { User, AuthChangeEvent } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
@@ -164,57 +163,67 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const signInWithPassword = async (phone: string, password: string) => {
-    console.log('Signing in with password for phone:', phone);
+    console.log('=== PASSWORD LOGIN DEBUG ===');
+    console.log('Original phone input:', phone);
+    console.log('Password provided:', password ? 'YES' : 'NO');
     
     const normalizedPhone = normalizePhone(phone);
-    console.log('Normalized phone for password login:', normalizedPhone);
+    console.log('Normalized phone:', normalizedPhone);
     
     try {
-      // CRITICAL FIX: Try both phone formats to match what might be stored
+      // Try multiple phone formats to find the shopkeeper
+      const phoneFormats = [
+        normalizedPhone,           // +918971312795
+        normalizedPhone.replace('+', ''),  // 918971312795
+        phone,                     // Original input
+        normalizedPhone.substring(3), // 8971312795 (without +91)
+      ];
+      
+      console.log('Trying phone formats:', phoneFormats);
+      
       let shopkeeperData = null;
-      let verifyError = null;
-
-      // First try with +91 format
-      console.log('Trying verification with +91 format:', normalizedPhone);
-      const { data: data1, error: error1 } = await supabase.rpc(
-        'verify_shopkeeper_login',
-        { 
-          p_phone: normalizedPhone, 
-          p_password: password 
-        }
-      );
-
-      if (!error1 && data1 && data1.length > 0) {
-        shopkeeperData = data1;
-      } else {
-        // Try without + format (just the digits)
-        const phoneWithoutPlus = normalizedPhone.replace('+', '');
-        console.log('Trying verification without + format:', phoneWithoutPlus);
+      let workingFormat = null;
+      
+      for (const phoneFormat of phoneFormats) {
+        console.log(`Trying format: ${phoneFormat}`);
         
-        const { data: data2, error: error2 } = await supabase.rpc(
+        const { data, error } = await supabase.rpc(
           'verify_shopkeeper_login',
           { 
-            p_phone: phoneWithoutPlus, 
+            p_phone: phoneFormat, 
             p_password: password 
           }
         );
-
-        if (!error2 && data2 && data2.length > 0) {
-          shopkeeperData = data2;
-        } else {
-          verifyError = error2;
+        
+        console.log(`Result for ${phoneFormat}:`, { data, error });
+        
+        if (!error && data && data.length > 0) {
+          shopkeeperData = data;
+          workingFormat = phoneFormat;
+          console.log(`SUCCESS with format: ${phoneFormat}`, data[0]);
+          break;
         }
       }
 
-      console.log('Shopkeeper verification result:', shopkeeperData, verifyError);
-
       if (!shopkeeperData || shopkeeperData.length === 0) {
-        console.log('Invalid credentials for shopkeeper');
+        console.log('No shopkeeper found with any phone format');
+        
+        // Let's also check what's actually in the database
+        console.log('Checking all profiles in database...');
+        const { data: allProfiles, error: profileError } = await supabase
+          .from('profiles')
+          .select('phone, shopkeeper_name, shop_name')
+          .limit(10);
+        
+        console.log('All profiles:', allProfiles);
+        console.log('Profile query error:', profileError);
+        
         return { error: { message: 'Invalid phone number or password' } };
       }
 
       // Use consistent email format with phone for auth
       const email = `${normalizedPhone.replace('+', '')}@shopkeeper.app`;
+      console.log('Trying auth with email:', email);
       
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
@@ -240,6 +249,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.error('Sign up error:', signUpError);
           return { error: signUpError };
         }
+        
+        console.log('Auth user created successfully');
+      } else {
+        console.log('Auth login successful');
       }
 
       return { error: null };
