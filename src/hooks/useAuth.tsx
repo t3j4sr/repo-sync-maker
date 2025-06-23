@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext } from 'react'
 import { User, AuthChangeEvent } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
@@ -68,13 +67,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (!existingProfile) {
-        // Profile doesn't exist, create it
+        // Profile doesn't exist, create it with proper metadata
         console.log('Creating profile for user:', user.id);
         const profileData = {
           id: user.id,
           phone: user.phone || user.user_metadata?.phone || '',
-          shopkeeper_name: user.user_metadata?.shopkeeperName || user.user_metadata?.shopkeeper_name || 'Unknown User',
-          shop_name: user.user_metadata?.shopName || user.user_metadata?.shop_name || 'Unknown Shop'
+          shopkeeper_name: user.user_metadata?.shopkeeperName || user.user_metadata?.shopkeeper_name || '',
+          shop_name: user.user_metadata?.shopName || user.user_metadata?.shop_name || ''
         };
         
         console.log('Profile data to insert:', profileData);
@@ -90,7 +89,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } else {
         console.log('Profile already exists');
-        // Update profile with latest metadata if it exists but has placeholder values
+        // Update profile with latest metadata if available
         if (user.user_metadata?.shopkeeperName && user.user_metadata?.shopName) {
           const { error: updateError } = await supabase
             .from('profiles')
@@ -186,7 +185,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { error: { message: 'Invalid phone number or password' } };
       }
 
-      // Use email format with phone for auth (consistent approach)
+      // Use consistent email format with phone for auth
       const email = `${normalizedPhone.replace('+', '')}@shopkeeper.app`;
       
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -195,8 +194,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (signInError) {
-        console.log('Auth sign in failed, trying to create auth user');
-        // If auth user doesn't exist, create one
+        console.log('Auth user does not exist, creating one');
+        // If auth user doesn't exist, create one with proper metadata
         const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,

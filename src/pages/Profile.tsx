@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -58,13 +57,13 @@ const Profile = () => {
       }
       
       if (!data) {
-        console.log('No profile found, creating one...');
-        // Create profile if it doesn't exist using the latest user metadata
+        console.log('No profile found, creating one with proper metadata...');
+        // Create profile using metadata from auth user
         const newProfileData = {
           id: user.id,
           phone: user.phone || user.user_metadata?.phone || '',
-          shopkeeper_name: user.user_metadata?.shopkeeperName || user.user_metadata?.shopkeeper_name || 'Unknown User',
-          shop_name: user.user_metadata?.shopName || user.user_metadata?.shop_name || 'Unknown Shop'
+          shopkeeper_name: user.user_metadata?.shopkeeperName || user.user_metadata?.shopkeeper_name || 'New User',
+          shop_name: user.user_metadata?.shopName || user.user_metadata?.shop_name || 'New Shop'
         };
 
         console.log('Creating profile with data:', newProfileData);
@@ -82,7 +81,29 @@ const Profile = () => {
         setProfile(newProfile);
       } else {
         console.log('Profile found:', data);
-        setProfile(data);
+        // If profile exists but has empty values, update with user metadata
+        if ((!data.shopkeeper_name || data.shopkeeper_name === 'Unknown User') && user.user_metadata?.shopkeeperName) {
+          const { data: updatedProfile, error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              shopkeeper_name: user.user_metadata.shopkeeperName,
+              shop_name: user.user_metadata.shopName || data.shop_name,
+              phone: user.phone || user.user_metadata?.phone || data.phone
+            })
+            .eq('id', user.id)
+            .select()
+            .single();
+
+          if (updateError) {
+            console.error('Error updating profile:', updateError);
+            setProfile(data);
+          } else {
+            console.log('Profile updated with metadata:', updatedProfile);
+            setProfile(updatedProfile);
+          }
+        } else {
+          setProfile(data);
+        }
       }
     } catch (error) {
       console.error('Error in fetchProfile:', error);
@@ -100,34 +121,34 @@ const Profile = () => {
     try {
       console.log('Fetching sales data for user:', user.id);
       
-      // Get total sales amount - only for current user's purchases
+      // Get total sales amount - ONLY for current user's purchases
       const { data: purchasesData, error: purchasesError } = await supabase
         .from('purchases')
         .select('amount')
-        .eq('user_id', user.id); // Filter by current user
+        .eq('user_id', user.id); // Critical: Filter by current user only
 
       if (purchasesError) {
         console.error('Error fetching purchases:', purchasesError);
         throw purchasesError;
       }
 
-      console.log('Purchases data for user:', purchasesData);
+      console.log('Purchases data for current user only:', purchasesData);
 
       const totalSales = purchasesData.reduce((sum, purchase) => sum + purchase.amount, 0);
       const totalTransactions = purchasesData.length;
 
-      // Get total customers count - only for current user's customers
+      // Get total customers count - ONLY for current user's customers
       const { count: customersCount, error: customersError } = await supabase
         .from('customers')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id); // Filter by current user
+        .eq('user_id', user.id); // Critical: Filter by current user only
 
       if (customersError) {
         console.error('Error fetching customers count:', customersError);
         throw customersError;
       }
 
-      console.log('Customers count for user:', customersCount);
+      console.log('Customers count for current user only:', customersCount);
 
       setSalesData({
         totalSales,
@@ -262,7 +283,7 @@ const Profile = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
+                <CardTitle className="text-sm font-medium">My Total Sales</CardTitle>
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -270,14 +291,14 @@ const Profile = () => {
                   {formatCurrency(salesData.totalSales)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  From your customers
+                  From your customers only
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
+                <CardTitle className="text-sm font-medium">My Transactions</CardTitle>
                 <ShoppingCart className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -285,14 +306,14 @@ const Profile = () => {
                   {salesData.totalTransactions}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Purchase transactions
+                  Your purchase transactions
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
+                <CardTitle className="text-sm font-medium">My Customers</CardTitle>
                 <User className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -300,7 +321,7 @@ const Profile = () => {
                   {salesData.totalCustomers}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Unique customers
+                  Your unique customers
                 </p>
               </CardContent>
             </Card>
@@ -309,12 +330,12 @@ const Profile = () => {
           {/* Quick Stats */}
           <Card>
             <CardHeader>
-              <CardTitle>Quick Statistics</CardTitle>
+              <CardTitle>Your Statistics</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Average Transaction Value</span>
+                  <span className="text-gray-600">Your Average Transaction Value</span>
                   <span className="font-medium">
                     {salesData.totalTransactions > 0 
                       ? formatCurrency(salesData.totalSales / salesData.totalTransactions)
@@ -323,7 +344,7 @@ const Profile = () => {
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Average Sales per Customer</span>
+                  <span className="text-gray-600">Your Average Sales per Customer</span>
                   <span className="font-medium">
                     {salesData.totalCustomers > 0 
                       ? formatCurrency(salesData.totalSales / salesData.totalCustomers)

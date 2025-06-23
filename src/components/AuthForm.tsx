@@ -18,7 +18,7 @@ export const AuthForm = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
-  const { signUpWithPhone, verifyOtp } = useAuth();
+  const { signUpWithPhone, verifyOtp, signInWithPassword } = useAuth();
   const { toast } = useToast();
 
   const formatPhoneNumber = (phoneNumber: string) => {
@@ -70,56 +70,18 @@ export const AuthForm = () => {
 
     setLoading(true);
     try {
-      const normalizedPhone = normalizePhone(phone);
-      console.log('Attempting password login for:', normalizedPhone);
+      console.log('Attempting password login for:', phone);
       
-      // Verify shopkeeper credentials
-      const { data: shopkeeperData, error: verifyError } = await supabase.rpc(
-        'verify_shopkeeper_login',
-        { 
-          p_phone: normalizedPhone, 
-          p_password: password 
-        }
-      );
+      const { error } = await signInWithPassword(phone, password);
 
-      if (verifyError || !shopkeeperData || shopkeeperData.length === 0) {
+      if (error) {
+        console.error('Password login error:', error);
         toast({
           title: "Error",
-          description: "Invalid phone number or password",
+          description: error.message || "Invalid phone number or password",
           variant: "destructive",
         });
         return;
-      }
-
-      // Sign in the user with Supabase Auth
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: `${normalizedPhone.replace('+', '')}@placeholder.com`,
-        password: password,
-      });
-
-      if (signInError) {
-        // If auth user doesn't exist, create one and set password
-        const { error: signUpError } = await supabase.auth.signUp({
-          email: `${normalizedPhone.replace('+', '')}@placeholder.com`,
-          password: password,
-          options: {
-            data: {
-              shopkeeperName: shopkeeperData[0].shopkeeper_name,
-              shopName: shopkeeperData[0].shop_name,
-              phone: normalizedPhone
-            }
-          }
-        });
-
-        if (signUpError) {
-          console.error('Sign up error:', signUpError);
-          toast({
-            title: "Error",
-            description: "Failed to authenticate",
-            variant: "destructive",
-          });
-          return;
-        }
       }
 
       toast({
