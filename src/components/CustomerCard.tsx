@@ -29,25 +29,25 @@ export const CustomerCard = ({ customer, onAddPurchase }: CustomerCardProps) => 
     >
       <div className="flex items-center gap-3">
         <Avatar className="w-12 h-12">
-          <AvatarFallback className="bg-gray-200 text-gray-600 font-medium text-sm">
-            {customer.name.charAt(0)}
+          <AvatarFallback className="bg-gray-200 text-gray-600 font-medium text-lg">
+            {customer.name.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
         <div>
-          <h3 className="font-medium text-gray-900">{customer.name}</h3>
+          <h3 className="font-medium text-gray-900 text-lg">{customer.name}</h3>
           <p className="text-sm text-gray-500">{customer.phone}</p>
         </div>
       </div>
       <div className="flex items-center gap-3">
         <div className="text-right">
-          <span className="font-semibold text-gray-900">Rs {customer.total_purchases || 0}</span>
+          <span className="font-semibold text-gray-900 text-lg">Rs {customer.total_purchases || 0}</span>
         </div>
         <Button
           size="sm"
           onClick={handleAddPurchaseClick}
-          className="bg-purple-600 hover:bg-purple-700 h-8 w-8 p-0"
+          className="bg-purple-600 hover:bg-purple-700 h-12 w-12 p-0 rounded-lg"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-5 h-5 text-white" />
         </Button>
       </div>
     </div>

@@ -1,9 +1,11 @@
+
 import { useState, useEffect, createContext, useContext } from 'react'
-import { User, AuthChangeEvent } from '@supabase/supabase-js'
+import { User, AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
 interface AuthContextType {
   user: User | null
+  session: Session | null
   loading: boolean
   signInWithPhone: (phone: string) => Promise<{ error: any; isNewUser?: boolean }>
   signInWithPassword: (phone: string, password: string) => Promise<{ error: any }>
@@ -17,24 +19,56 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session);
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
-
-    // Listen for auth changes
+    // Set up auth state listener FIRST
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session) => {
+    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       console.log('Auth state change:', event, session?.user?.id);
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+
+      // Handle Google OAuth sign up - create profile if needed
+      if (event === 'SIGNED_IN' && session?.user && !session.user.user_metadata?.isCustomer) {
+        // Check if this is a new Google user by looking for existing profile
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        if (!existingProfile) {
+          // Create profile for Google OAuth users
+          const userData = session.user;
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert([{
+              id: userData.id,
+              shopkeeper_name: userData.user_metadata.full_name || userData.user_metadata.name || 'Shopkeeper',
+              shop_name: userData.user_metadata.shop_name || 'Shop',
+              phone: userData.phone || ''
+            }]);
+
+          if (profileError) {
+            console.error('Failed to create profile:', profileError);
+          } else {
+            console.log('Profile created for Google user');
+          }
+        }
+      }
+    });
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session);
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
     return () => subscription.unsubscribe()
   }, [])
@@ -107,11 +141,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           p_phone: normalizedPhone, 
           p_password: password 
         }
-      );
+      ) as { data: any[] | null, error: any };
 
       console.log('Shopkeeper verification result:', { shopkeeperData, verifyError });
 
-      if (verifyError || !shopkeeperData || shopkeeperData.length === 0) {
+      if (verifyError || !shopkeeperData || (Array.isArray(shopkeeperData) && shopkeeperData.length === 0)) {
         console.log('No shopkeeper found or invalid password');
         return { error: { message: 'Invalid phone number or password' } };
       }
@@ -128,13 +162,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (signInError) {
         console.log('Auth user does not exist, creating one');
         // If auth user doesn't exist, create one with proper metadata
+        const profileData = Array.isArray(shopkeeperData) ? shopkeeperData[0] : shopkeeperData;
         const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
-              shopkeeperName: shopkeeperData[0].shopkeeper_name,
-              shopName: shopkeeperData[0].shop_name,
+              shopkeeperName: (profileData as any)?.shopkeeper_name || 'Shopkeeper',
+              shopName: (profileData as any)?.shop_name || 'Shop',
               phone: normalizedPhone
             }
           }
@@ -189,9 +224,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: customerData, error: customerError } = await supabase.rpc(
       'verify_customer_login',
       { p_phone: normalizedPhone }
-    );
+    ) as { data: any[] | null, error: any };
 
-    if (!customerError && customerData && customerData.length > 0) {
+    if (!customerError && customerData && Array.isArray(customerData) && customerData.length > 0) {
       // This is a customer login
       console.log('Customer login detected:', customerData[0]);
       
@@ -203,11 +238,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (!error) {
         // Update the user metadata to mark as customer
+        const customer = customerData[0] as any;
         const { error: updateError } = await supabase.auth.updateUser({
           data: { 
             isCustomer: true,
-            name: customerData[0].customer_name,
-            customerId: customerData[0].customer_id
+            name: customer.customer_name,
+            customerId: customer.customer_id
           }
         });
         
@@ -267,6 +303,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <AuthContext.Provider value={{ 
       user, 
+      session,
       loading, 
       signInWithPhone,
       signInWithPassword,

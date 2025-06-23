@@ -9,7 +9,7 @@ interface HeaderProps {
   showActivityLog: boolean;
 }
 
-export const Header = ({ onNavigateToProfile }: HeaderProps) => {
+export const Header = ({ onToggleActivityLog, onNavigateToProfile }: HeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -32,7 +32,7 @@ export const Header = ({ onNavigateToProfile }: HeaderProps) => {
       </div>
       <div className="flex items-center gap-2">
         <Button
-          onClick={() => navigate('/activity')}
+          onClick={onToggleActivityLog}
           variant="ghost"
           size="sm"
           className="text-white hover:bg-white/20"

@@ -234,12 +234,10 @@ export type Database = {
         }[]
       }
       verify_shopkeeper_login: {
-        Args: { p_phone: string; p_password: string }
-        Returns: {
-          user_id: string
-          shopkeeper_name: string
-          shop_name: string
-        }[]
+        Args:
+          | Record<PropertyKey, never>
+          | { p_phone: string; p_password: string }
+        Returns: undefined
       }
     }
     Enums: {

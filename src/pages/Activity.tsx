@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -33,17 +34,15 @@ const Activity = () => {
   const navigate = useNavigate();
 
   const fetchActivities = async () => {
-    if (!user) return;
-
     try {
       console.log('Fetching all activities from all users');
       
-      // Fetch all activities from all users, not just the current user
+      // Fetch ALL activities from ALL users (not filtered by current user)
       const { data: activityData, error: activityError } = await supabase
         .from('activity_logs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(100); // Increased limit to show more activities
 
       if (activityError) {
         console.error('Error fetching activities:', activityError);
@@ -82,7 +81,28 @@ const Activity = () => {
 
   useEffect(() => {
     fetchActivities();
-  }, [user]);
+
+    // Set up real-time subscription for activity updates from ALL users
+    const channel = supabase
+      .channel('all-activity-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'activity_logs'
+        },
+        (payload) => {
+          console.log('New activity detected from any user, refreshing...', payload);
+          fetchActivities();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-US', {
@@ -107,20 +127,37 @@ const Activity = () => {
     }
   };
 
+  const getActionColor = (actionType: string) => {
+    switch (actionType) {
+      case 'customer_created':
+        return 'bg-green-100 text-green-800';
+      case 'purchase_added':
+        return 'bg-blue-100 text-blue-800';
+      case 'customer_updated':
+        return 'bg-orange-100 text-orange-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   const handleNavigateToProfile = () => {
     navigate('/profile');
+  };
+
+  const handleToggleActivityLog = () => {
+    navigate('/activity');
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800">
         <Header 
-          onToggleActivityLog={() => {}}
+          onToggleActivityLog={handleToggleActivityLog}
           onNavigateToProfile={handleNavigateToProfile}
           showActivityLog={false}
         />
         <div className="flex-1 bg-white rounded-t-3xl min-h-[calc(100vh-80px)] p-6">
-          <div className="text-center py-4 text-gray-500">Loading activities...</div>
+          <div className="text-center py-8 text-gray-500">Loading activities...</div>
         </div>
       </div>
     );
@@ -129,46 +166,43 @@ const Activity = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800">
       <Header 
-        onToggleActivityLog={() => {}}
+        onToggleActivityLog={handleToggleActivityLog}
         onNavigateToProfile={handleNavigateToProfile}
         showActivityLog={false}
       />
       
       <div className="flex-1 bg-white rounded-t-3xl min-h-[calc(100vh-80px)] p-6">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Activity Log</h2>
-          <p className="text-gray-600">Track all recent activities and changes from all users</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Recent Activity</h2>
+          <p className="text-gray-600">Live activity feed from all users on the platform</p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+            <CardTitle>All Platform Activity</CardTitle>
           </CardHeader>
           <CardContent>
             {activities.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <p className="text-lg font-medium">No activities yet</p>
-                <p className="text-sm">Activities will appear here as users use the app</p>
+                <p className="text-sm">Activities will appear here as users interact with the app</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {activities.map((activity) => (
                   <div
                     key={activity.id}
-                    className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200"
+                    className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
                   >
                     <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                        <div className="w-3 h-3 bg-purple-600 rounded-full"></div>
-                      </div>
+                      <Avatar className="w-10 h-10">
+                        <AvatarFallback className="bg-purple-100 text-purple-600">
+                          {activity.profile?.shopkeeper_name?.charAt(0) || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2">
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback className="bg-purple-100 text-purple-600 text-xs">
-                            {activity.profile?.shopkeeper_name?.charAt(0) || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
                         <div className="flex-1">
                           <p className="font-medium text-sm text-gray-900">
                             {activity.profile?.shopkeeper_name || 'Unknown User'}
@@ -177,7 +211,7 @@ const Activity = () => {
                             {activity.profile?.shop_name || 'Unknown Shop'}
                           </p>
                         </div>
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getActionColor(activity.action_type)}`}>
                           {getActionType(activity.action_type)}
                         </span>
                       </div>
