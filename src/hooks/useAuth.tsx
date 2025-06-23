@@ -1,3 +1,4 @@
+
 import { useState, useEffect, createContext, useContext } from 'react'
 import { User, AuthChangeEvent } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
@@ -169,8 +170,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     console.log('Normalized phone for password login:', normalizedPhone);
     
     try {
-      // First verify shopkeeper credentials using the database function
-      const { data: shopkeeperData, error: verifyError } = await supabase.rpc(
+      // CRITICAL FIX: Try both phone formats to match what might be stored
+      let shopkeeperData = null;
+      let verifyError = null;
+
+      // First try with +91 format
+      console.log('Trying verification with +91 format:', normalizedPhone);
+      const { data: data1, error: error1 } = await supabase.rpc(
         'verify_shopkeeper_login',
         { 
           p_phone: normalizedPhone, 
@@ -178,9 +184,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       );
 
+      if (!error1 && data1 && data1.length > 0) {
+        shopkeeperData = data1;
+      } else {
+        // Try without + format (just the digits)
+        const phoneWithoutPlus = normalizedPhone.replace('+', '');
+        console.log('Trying verification without + format:', phoneWithoutPlus);
+        
+        const { data: data2, error: error2 } = await supabase.rpc(
+          'verify_shopkeeper_login',
+          { 
+            p_phone: phoneWithoutPlus, 
+            p_password: password 
+          }
+        );
+
+        if (!error2 && data2 && data2.length > 0) {
+          shopkeeperData = data2;
+        } else {
+          verifyError = error2;
+        }
+      }
+
       console.log('Shopkeeper verification result:', shopkeeperData, verifyError);
 
-      if (verifyError || !shopkeeperData || shopkeeperData.length === 0) {
+      if (!shopkeeperData || shopkeeperData.length === 0) {
         console.log('Invalid credentials for shopkeeper');
         return { error: { message: 'Invalid phone number or password' } };
       }

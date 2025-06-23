@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -216,7 +217,8 @@ export const AuthForm = () => {
           return;
         }
 
-        // Set the password for the new shopkeeper
+        // CRITICAL FIX: Set the password AFTER successful OTP verification
+        console.log('Setting password for new shopkeeper:', formattedPhone);
         const { error: passwordError } = await supabase.rpc(
           'set_shopkeeper_password',
           { 
@@ -227,6 +229,13 @@ export const AuthForm = () => {
 
         if (passwordError) {
           console.error('Password set error:', passwordError);
+          toast({
+            title: "Warning",
+            description: "Account created but password setup failed. Please contact support.",
+            variant: "destructive",
+          });
+        } else {
+          console.log('Password set successfully for:', formattedPhone);
         }
 
         // Send registration SMS
