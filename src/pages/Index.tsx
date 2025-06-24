@@ -7,6 +7,8 @@ import { CustomersList } from "@/components/CustomersList";
 import { FloatingAddButton } from "@/components/FloatingAddButton";
 import { AddCustomerModal } from "@/components/AddCustomerModal";
 import { AddPurchaseModal } from "@/components/AddPurchaseModal";
+import { Button } from "@/components/ui/button";
+import { Sparkles } from "lucide-react";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useCustomerFiltering } from "@/hooks/useCustomerFiltering";
 
@@ -43,6 +45,10 @@ const Index = () => {
     navigate('/activity');
   };
 
+  const handleNavigateToScratchCards = () => {
+    navigate('/scratch-cards');
+  };
+
   const handleCustomerAdded = async () => {
     await fetchCustomers();
   };
@@ -72,7 +78,18 @@ const Index = () => {
         onSearchChange={setSearchQuery}
       />
 
-      <div className="flex-1 bg-white rounded-t-3xl min-h-[calc(100vh-200px)] p-4">
+      {/* Scratch Cards Button */}
+      <div className="px-4 pb-4">
+        <Button
+          onClick={handleNavigateToScratchCards}
+          className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-semibold py-3 rounded-xl shadow-lg"
+        >
+          <Sparkles className="w-5 h-5 mr-2" />
+          Lucky Scratch Cards
+        </Button>
+      </div>
+
+      <div className="flex-1 bg-white rounded-t-3xl min-h-[calc(100vh-280px)] p-4">
         <CustomersList 
           showActivityLog={false}
           groupedCustomers={{ today: [], yesterday: [], older: filteredCustomers }}
