@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { ScratchCard } from './ScratchCard';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Gift, RotateCcw, Sparkles } from "lucide-react";
+import { Gift, RotateCcw, Sparkles, ArrowLeft } from "lucide-react";
 import { useScratchCards } from "@/hooks/useScratchCards";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
@@ -20,7 +20,11 @@ const REWARDS = [
   "₹100 Store Credit"
 ];
 
-export const ScratchCardsPage = () => {
+interface ScratchCardsPageProps {
+  onBack?: () => void;
+}
+
+export const ScratchCardsPage = ({ onBack }: ScratchCardsPageProps) => {
   const [currentReward, setCurrentReward] = useState('');
   const [revealedReward, setRevealedReward] = useState('');
   const [cardKey, setCardKey] = useState(0);
@@ -71,8 +75,21 @@ export const ScratchCardsPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 p-4">
       <div className="max-w-md mx-auto space-y-6">
-        {/* Header */}
+        {/* Header with optional back button */}
         <div className="text-center text-white py-6">
+          {onBack && (
+            <div className="flex justify-start mb-4">
+              <Button
+                onClick={onBack}
+                variant="outline"
+                size="sm"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+            </div>
+          )}
           <Sparkles className="w-12 h-12 mx-auto mb-4 text-yellow-300" />
           <h1 className="text-3xl font-bold mb-2">Lucky Scratch Cards</h1>
           <p className="text-purple-200">Scratch to reveal amazing rewards!</p>
