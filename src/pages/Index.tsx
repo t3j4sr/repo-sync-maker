@@ -8,7 +8,7 @@ import { FloatingAddButton } from "@/components/FloatingAddButton";
 import { AddCustomerModal } from "@/components/AddCustomerModal";
 import { AddPurchaseModal } from "@/components/AddPurchaseModal";
 import { Button } from "@/components/ui/button";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Gift } from "lucide-react";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useCustomerFiltering } from "@/hooks/useCustomerFiltering";
 
@@ -78,19 +78,22 @@ const Index = () => {
         onSearchChange={setSearchQuery}
       />
 
-      <div className="flex-1 bg-white rounded-t-3xl min-h-[calc(100vh-280px)]">
-        {/* Scratch Cards Button - Inside the white area, prominently displayed */}
-        <div className="p-4 pb-2">
+      {/* Scratch Cards Button - Very Prominent and Outside White Area */}
+      <div className="px-4 pb-4">
+        <div className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 p-1 rounded-2xl shadow-2xl">
           <Button
             onClick={handleNavigateToScratchCards}
-            className="w-full bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 hover:from-yellow-500 hover:via-orange-600 hover:to-red-600 text-white font-bold py-4 rounded-2xl shadow-2xl text-lg transform hover:scale-105 transition-all duration-200"
+            className="w-full bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 hover:from-yellow-500 hover:via-orange-600 hover:to-red-600 text-white font-bold py-6 rounded-2xl shadow-2xl text-xl transform hover:scale-105 transition-all duration-200 border-4 border-yellow-300"
           >
-            <Sparkles className="w-6 h-6 mr-3 animate-pulse" />
-            🎰 Lucky Scratch Cards - Try Your Luck!
+            <Gift className="w-8 h-8 mr-3 animate-bounce" />
+            🎰 LUCKY SCRATCH CARDS - TRY YOUR LUCK NOW! 🎉
+            <Sparkles className="w-8 h-8 ml-3 animate-pulse" />
           </Button>
         </div>
+      </div>
 
-        <div className="p-4 pt-2">
+      <div className="flex-1 bg-white rounded-t-3xl min-h-[calc(100vh-320px)]">
+        <div className="p-4">
           <CustomersList 
             showActivityLog={false}
             groupedCustomers={{ today: [], yesterday: [], older: filteredCustomers }}
