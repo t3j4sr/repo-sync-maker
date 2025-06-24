@@ -78,14 +78,14 @@ const Index = () => {
         onSearchChange={setSearchQuery}
       />
 
-      {/* Scratch Cards Button */}
+      {/* Scratch Cards Button - More Prominent */}
       <div className="px-4 pb-4">
         <Button
           onClick={handleNavigateToScratchCards}
-          className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-semibold py-3 rounded-xl shadow-lg"
+          className="w-full bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 hover:from-yellow-500 hover:via-orange-600 hover:to-red-600 text-white font-bold py-4 rounded-2xl shadow-2xl text-lg transform hover:scale-105 transition-all duration-200"
         >
-          <Sparkles className="w-5 h-5 mr-2" />
-          Lucky Scratch Cards
+          <Sparkles className="w-6 h-6 mr-3 animate-pulse" />
+          🎰 Lucky Scratch Cards - Try Your Luck!
         </Button>
       </div>
 
