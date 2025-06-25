@@ -209,8 +209,16 @@ const Profile = () => {
 
       setGeneratedCodes(codes);
 
+      // Format phone for scratch card URL
+      let phoneForUrl = selectedCustomer.phone;
+      if (!phoneForUrl.startsWith('+')) {
+        phoneForUrl = `+91${phoneForUrl.replace(/^0+/, '')}`;
+      }
+
       // Send SMS
       try {
+        console.log('Attempting to send SMS to:', selectedCustomer.phone);
+        
         const { data, error } = await supabase.functions.invoke('send-scratch-card-sms', {
           body: {
             phone: selectedCustomer.phone,
@@ -220,24 +228,39 @@ const Profile = () => {
           }
         });
 
-        if (error) throw error;
+        console.log('SMS function response:', data);
+
+        if (error) {
+          console.error('SMS function error:', error);
+          throw error;
+        }
 
         if (data?.error) {
-          toast({
-            title: "Cards Generated",
-            description: `${numberOfCards} scratch cards created but SMS failed to send`,
-            variant: "destructive",
-          });
+          console.error('SMS service error:', data);
+          if (data.code === 21608) {
+            toast({
+              title: "Cards Generated ✅",
+              description: `${numberOfCards} scratch cards created! SMS not sent - phone number needs verification in Twilio trial account.`,
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Cards Generated ✅", 
+              description: `${numberOfCards} scratch cards created! SMS error: ${data.error}`,
+              variant: "destructive",
+            });
+          }
         } else {
+          console.log('SMS sent successfully:', data);
           toast({
-            title: "Success!",
-            description: `${numberOfCards} scratch cards sent to ${selectedCustomer.name}`,
+            title: "Success! 🎉",
+            description: `${numberOfCards} scratch cards sent to ${selectedCustomer.name} via SMS`,
           });
         }
       } catch (smsError) {
         console.error('SMS Error:', smsError);
         toast({
-          title: "Cards Generated",
+          title: "Cards Generated ✅",
           description: `${numberOfCards} scratch cards created but SMS failed to send`,
           variant: "destructive",
         });
@@ -536,6 +559,35 @@ const Profile = () => {
                     </div>
                   ))}
                 </div>
+                
+                {/* ADD SCRATCH CARD LINK FOR TESTING */}
+                {selectedCustomerId && (
+                  <div className="mt-4 p-3 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
+                    <h5 className="font-medium text-green-700 mb-2">🎯 Test Scratch Card Link:</h5>
+                    <div className="text-sm text-gray-700 mb-2">
+                      Click this link to test the scratch card experience:
+                    </div>
+                    <Button
+                      onClick={() => {
+                        const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
+                        if (selectedCustomer) {
+                          let phoneForUrl = selectedCustomer.phone;
+                          if (!phoneForUrl.startsWith('+')) {
+                            phoneForUrl = `+91${phoneForUrl.replace(/^0+/, '')}`;
+                          }
+                          const scratchUrl = `/play-scratch-cards?phone=${encodeURIComponent(phoneForUrl)}`;
+                          window.open(scratchUrl, '_blank');
+                        }
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="w-full bg-green-100 hover:bg-green-200 text-green-800 border-green-300"
+                    >
+                      🎫 Open Scratch Cards (Test Link)
+                    </Button>
+                  </div>
+                )}
+                
                 <p className="text-xs text-gray-500 mt-2">
                   📱 SMS sent to selected customer with scratch card link
                 </p>

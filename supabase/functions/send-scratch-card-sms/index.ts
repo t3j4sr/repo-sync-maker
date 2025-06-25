@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const corsHeaders = {
@@ -31,30 +30,44 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!accountSid || !authToken || !twilioPhone) {
       console.error('Missing Twilio credentials');
-      console.log('Available env vars:', Object.keys(Deno.env.toObject()));
       throw new Error('Twilio credentials not configured');
     }
 
-    // Format phone number to include country code if not present
-    let formattedPhone = phone;
-    if (!phone.startsWith('+')) {
-      // Assuming Indian numbers, add +91 prefix
-      formattedPhone = `+91${phone.replace(/^0+/, '')}`;
+    // Format phone number properly - remove +91 if present and ensure proper format
+    let formattedPhone = phone.replace(/\D/g, ''); // Remove all non-digits
+    
+    // If it starts with 91, keep it; if it's 10 digits, add 91
+    if (formattedPhone.length === 10) {
+      formattedPhone = '91' + formattedPhone;
+    } else if (formattedPhone.startsWith('91') && formattedPhone.length === 12) {
+      // Already properly formatted
+    } else {
+      console.error('Invalid phone number format:', phone);
+      throw new Error('Invalid phone number format');
     }
+    
+    // Add + prefix for international format
+    formattedPhone = '+' + formattedPhone;
 
     console.log('Original phone:', phone);  
     console.log('Formatted phone:', formattedPhone);
 
-    // Create the scratch card link - using the play URL
+    // Create the scratch card link - using the current domain
     const scratchCardUrl = `https://mpzwlxpbhipnzizthftb.supabase.co/play-scratch-cards?phone=${encodeURIComponent(formattedPhone)}`;
     
-    const message = `🎉 Hey ${customerName}! You've got ${cardsCount} scratch card${cardsCount > 1 ? 's' : ''} waiting for you! 🎫
+    const message = `🎉 Congratulations ${customerName}!
 
-✨ Scratch & Win Amazing Prizes: ${scratchCardUrl}
+You've earned ${cardsCount} scratch card${cardsCount > 1 ? 's' : ''} from Luck Draw! 🎫
+
+🎁 Scratch now to win amazing prizes:
+${scratchCardUrl}
 
 ⏰ Valid for 1 hour only. Good luck! 🍀
 
 - Luck Draw Team`;
+
+    console.log('Sending SMS message:', message);
+    console.log('Message length:', message.length);
 
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
     
@@ -64,9 +77,7 @@ const handler = async (req: Request): Promise<Response> => {
       Body: message,
     });
 
-    console.log('Sending SMS via Twilio to:', formattedPhone);
-    console.log('From number:', twilioPhone);
-    console.log('Message length:', message.length);
+    console.log('Twilio request body:', body.toString());
     
     const response = await fetch(twilioUrl, {
       method: 'POST',
@@ -82,12 +93,28 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('Twilio response:', JSON.stringify(responseData, null, 2));
     
     if (!response.ok) {
-      console.error('Twilio error:', responseData);
+      console.error('Twilio API error:', responseData);
+      
+      // More specific error handling
+      if (responseData.code === 21608) {
+        return new Response(JSON.stringify({ 
+          error: "Phone number not verified in Twilio trial account",
+          code: 21608,
+          details: responseData,
+          phoneUsed: formattedPhone,
+          scratchCardUrl
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        });
+      }
+      
       return new Response(JSON.stringify({ 
         error: responseData.message || 'Failed to send SMS',
         code: responseData.code,
         details: responseData,
-        phoneUsed: formattedPhone
+        phoneUsed: formattedPhone,
+        scratchCardUrl
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
