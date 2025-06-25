@@ -15,6 +15,7 @@ interface ScratchCard {
   prize_value: number;
   expires_at: string;
   customer_id: string;
+  scratched_at?: string;
 }
 
 const ScratchCardPlay = () => {
@@ -218,8 +219,8 @@ const ScratchCardPlay = () => {
               <Card key={card.id} className="overflow-hidden bg-gradient-to-br from-white to-gray-50 shadow-2xl transform hover:scale-105 transition-transform duration-300">
                 <CardContent className="p-0">
                   {/* Movie Ticket Style Header */}
-                  <div className="bg-gradient-to-r from-gold-400 to-yellow-500 p-4 text-center relative overflow-hidden">
-                    <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Cpath d="M0 0h100v100H0z" fill="%23ffffff" opacity="0.1"/%3E%3Cpath d="M20 20h60v60H20z" fill="none" stroke="%23ffffff" stroke-width="1" opacity="0.3"/%3E%3C/svg%3E')] opacity-20"></div>
+                  <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 p-4 text-center relative overflow-hidden">
+                    <div className="absolute inset-0 opacity-20"></div>
                     <div className="relative z-10">
                       <Gift className="w-8 h-8 text-white mx-auto mb-2" />
                       <h3 className="text-white font-bold text-lg">SCRATCH CARD</h3>
