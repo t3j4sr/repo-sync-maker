@@ -45,10 +45,6 @@ const Index = () => {
     navigate('/activity');
   };
 
-  const handleNavigateToScratchCards = () => {
-    navigate('/scratch-cards');
-  };
-
   const handleCustomerAdded = async () => {
     await fetchCustomers();
   };
@@ -70,7 +66,6 @@ const Index = () => {
       <Header 
         onToggleActivityLog={handleNavigateToActivity}
         onNavigateToProfile={handleNavigateToProfile}
-        onNavigateToScratchCards={handleNavigateToScratchCards}
         showActivityLog={false}
       />
 
