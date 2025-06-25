@@ -51,9 +51,14 @@ export const useCustomers = () => {
   };
 
   useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     fetchCustomers();
 
-    // Set up real-time subscription for customer updates
+    // Set up real-time subscription for customer updates with error handling
     const channel = supabase
       .channel('customers-updates')
       .on(
@@ -80,7 +85,13 @@ export const useCustomers = () => {
           fetchCustomers();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to customer updates');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Channel subscription error');
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);

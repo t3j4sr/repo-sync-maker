@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext } from 'react'
 import { User, AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
@@ -23,54 +22,88 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-      console.log('Auth state change:', event, session?.user?.id);
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+    let mounted = true;
 
-      // Handle Google OAuth sign up - create profile if needed
-      if (event === 'SIGNED_IN' && session?.user && !session.user.user_metadata?.isCustomer) {
-        // Check if this is a new Google user by looking for existing profile
-        const { data: existingProfile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', session.user.id)
-          .maybeSingle();
+    // Set up auth state listener with timeout
+    const setupAuth = async () => {
+      try {
+        // First get initial session with timeout
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session fetch timeout')), 5000)
+        );
 
-        if (!existingProfile) {
-          // Create profile for Google OAuth users
-          const userData = session.user;
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([{
-              id: userData.id,
-              shopkeeper_name: userData.user_metadata.full_name || userData.user_metadata.name || 'Shopkeeper',
-              shop_name: userData.user_metadata.shop_name || 'Shop',
-              phone: userData.phone || ''
-            }]);
+        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+        
+        if (mounted) {
+          console.log('Initial session loaded:', session?.user?.id);
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
 
-          if (profileError) {
-            console.error('Failed to create profile:', profileError);
-          } else {
-            console.log('Profile created for Google user');
+        // Then set up the listener
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
+          if (!mounted) return;
+          
+          console.log('Auth state change:', event, session?.user?.id);
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+
+          // Handle Google OAuth sign up - create profile if needed
+          if (event === 'SIGNED_IN' && session?.user && !session.user.user_metadata?.isCustomer) {
+            try {
+              const { data: existingProfile } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('id', session.user.id)
+                .maybeSingle();
+
+              if (!existingProfile) {
+                const userData = session.user;
+                const { error: profileError } = await supabase
+                  .from('profiles')
+                  .insert([{
+                    id: userData.id,
+                    shopkeeper_name: userData.user_metadata.full_name || userData.user_metadata.name || 'Shopkeeper',
+                    shop_name: userData.user_metadata.shop_name || 'Shop',
+                    phone: userData.phone || ''
+                  }]);
+
+                if (profileError) {
+                  console.error('Failed to create profile:', profileError);
+                } else {
+                  console.log('Profile created for Google user');
+                }
+              }
+            } catch (error) {
+              console.error('Error handling Google OAuth profile:', error);
+            }
           }
+        });
+
+        return () => {
+          if (subscription) {
+            subscription.unsubscribe();
+          }
+        };
+      } catch (error) {
+        console.error('Auth setup error:', error);
+        if (mounted) {
+          setLoading(false);
         }
       }
-    });
+    };
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session);
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    const cleanup = setupAuth();
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false;
+      cleanup.then(cleanupFn => cleanupFn?.());
+    };
   }, [])
 
   const normalizePhone = (phone: string) => {

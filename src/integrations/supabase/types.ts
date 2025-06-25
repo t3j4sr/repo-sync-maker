@@ -174,24 +174,33 @@ export type Database = {
           code: string
           created_at: string
           customer_id: string
+          expires_at: string | null
           id: string
           is_scratched: boolean
+          prize_type: string | null
+          prize_value: number | null
           scratched_at: string | null
         }
         Insert: {
           code: string
           created_at?: string
           customer_id: string
+          expires_at?: string | null
           id?: string
           is_scratched?: boolean
+          prize_type?: string | null
+          prize_value?: number | null
           scratched_at?: string | null
         }
         Update: {
           code?: string
           created_at?: string
           customer_id?: string
+          expires_at?: string | null
           id?: string
           is_scratched?: boolean
+          prize_type?: string | null
+          prize_value?: number | null
           scratched_at?: string | null
         }
         Relationships: [
@@ -209,6 +218,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_scratch_cards: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       create_customer_auth_account: {
         Args: { p_customer_id: string; p_phone: string; p_name: string }
         Returns: string
@@ -216,6 +229,17 @@ export type Database = {
       generate_scratch_cards_for_customer: {
         Args: { customer_uuid: string }
         Returns: number
+      }
+      get_customer_scratch_summary: {
+        Args: { customer_uuid: string }
+        Returns: {
+          total_cards: number
+          unscratched_cards: number
+          scratched_cards: number
+          total_percentage_discount: number
+          total_amount_discount: number
+          cards_data: Json
+        }[]
       }
       set_shopkeeper_password: {
         Args: { p_phone: string; p_password: string }

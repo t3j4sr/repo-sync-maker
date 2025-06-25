@@ -1,16 +1,15 @@
 
 import { Button } from "@/components/ui/button";
-import { User, ArrowLeft, Activity, Gift } from "lucide-react";
+import { User, ArrowLeft, Activity } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 interface HeaderProps {
   onToggleActivityLog: () => void;
   onNavigateToProfile: () => void;
-  onNavigateToScratchCards?: () => void;
   showActivityLog: boolean;
 }
 
-export const Header = ({ onToggleActivityLog, onNavigateToProfile, onNavigateToScratchCards }: HeaderProps) => {
+export const Header = ({ onToggleActivityLog, onNavigateToProfile }: HeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -40,15 +39,6 @@ export const Header = ({ onToggleActivityLog, onNavigateToProfile, onNavigateToS
         >
           <Activity className="w-5 h-5 mr-2" />
           Activity
-        </Button>
-        <Button
-          onClick={onNavigateToScratchCards}
-          variant="ghost"
-          size="sm"
-          className="text-white hover:bg-white/20"
-        >
-          <Gift className="w-5 h-5 mr-2" />
-          Scratch Cards
         </Button>
         <Button
           onClick={onNavigateToProfile}

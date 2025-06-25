@@ -10,6 +10,7 @@
 
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#8B5CF6" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Lucky Shopkeeper" />
@@ -48,6 +49,16 @@
       
       .safe-area-bottom {
         padding-bottom: env(safe-area-inset-bottom);
+      }
+
+      /* Loading optimization */
+      .loading-fade {
+        animation: fadeIn 0.5s ease-in;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
       }
     </style>
   </head>

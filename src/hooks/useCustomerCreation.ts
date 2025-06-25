@@ -4,6 +4,10 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { useActivityLogger } from "@/hooks/useActivityLogger";
 import { useToast } from "@/hooks/use-toast";
+import { createCustomerAuthAccount } from "@/services/customerAuthService";
+import { useSMSService } from "@/services/smsService";
+import { createPurchase } from "@/services/purchaseService";
+import { useScratchCardService } from "@/services/scratchCardService";
 
 export interface CustomerFormData {
   name: string;
@@ -16,6 +20,8 @@ export const useCustomerCreation = () => {
   const { user } = useAuth();
   const { logActivity } = useActivityLogger();
   const { toast } = useToast();
+  const { sendWelcomeSMS } = useSMSService();
+  const { handleScratchCardsForPurchase } = useScratchCardService();
 
   const formatPhoneNumber = (phoneNumber: string) => {
     const cleanNumber = phoneNumber.replace(/\D/g, '');
@@ -33,82 +39,6 @@ export const useCustomerCreation = () => {
     }
     
     return `+91${cleanNumber}`;
-  };
-
-  const createCustomerAuthAccount = async (customerId: string, phone: string, name: string) => {
-    try {
-      console.log('Creating auth account for customer:', name, phone);
-      
-      // Use the database function to create customer auth account
-      const { data, error } = await supabase.rpc('create_customer_auth_account', {
-        p_customer_id: customerId,
-        p_phone: phone,
-        p_name: name
-      });
-
-      if (error) {
-        console.error('Error creating customer auth account:', error);
-        return null;
-      }
-
-      console.log('Customer auth account created with ID:', data);
-      return data;
-    } catch (error) {
-      console.error('Failed to create customer auth account:', error);
-      return null;
-    }
-  };
-
-  const sendWelcomeSMS = async (phone: string, name: string) => {
-    try {
-      console.log('Attempting to send welcome SMS to:', phone, 'for:', name);
-      
-      const { data, error } = await supabase.functions.invoke('send-welcome-sms', {
-        body: {
-          phone: phone,
-          name: name
-        }
-      });
-
-      if (error) {
-        console.error('SMS error details:', error);
-        throw error;
-      }
-
-      console.log('SMS response:', data);
-      
-      if (data?.error) {
-        if (data?.code === 21608) {
-          toast({
-            title: "SMS Warning",
-            description: "Customer added successfully! SMS not sent - phone number needs verification in Twilio trial account.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "SMS Warning",
-            description: `Customer added successfully! SMS error: ${data.error}`,
-            variant: "destructive",
-          });
-        }
-        return data;
-      }
-      
-      toast({
-        title: "Welcome SMS Sent",
-        description: `Welcome message sent to ${phone}`,
-      });
-      
-      return data;
-    } catch (error) {
-      console.error('Failed to send welcome SMS:', error);
-      toast({
-        title: "SMS Error",
-        description: "Customer added successfully but welcome SMS could not be sent. Please check your Twilio configuration.",
-        variant: "destructive",
-      });
-      throw error;
-    }
   };
 
   const createCustomer = async (formData: CustomerFormData, onSuccess: () => void) => {
@@ -143,49 +73,22 @@ export const useCustomerCreation = () => {
       // Create authentication account for the customer
       const customerAuthId = await createCustomerAuthAccount(customer.id, formattedPhone, formData.name);
       
-      // Send welcome SMS
-      try {
-        await sendWelcomeSMS(formattedPhone, formData.name);
-      } catch (smsError) {
-        console.error('SMS sending failed, but continuing with customer creation:', smsError);
-      }
-
-      // Log the activity
-      try {
-        await logActivity(
-          'customer_created',
-          'customer',
-          customer.id,
-          `Added new customer: ${formData.name}`,
-          { 
-            customer_name: formData.name,
-            customer_phone: formattedPhone,
-            auth_account_created: !!customerAuthId,
-            customer_auth_id: customerAuthId
-          }
-        );
-        console.log('Customer creation activity logged');
-      } catch (activityError) {
-        console.error('Error logging customer creation activity:', activityError);
-      }
+      let scratchCardsGenerated = false;
 
       // Handle initial purchase if provided
       if (customer && formData.purchaseAmount && parseFloat(formData.purchaseAmount) > 0) {
-        const { data: purchase, error: purchaseError } = await supabase
-          .from('purchases')
-          .insert([
-            {
-              customer_id: customer.id,
-              amount: parseFloat(formData.purchaseAmount),
-              user_id: user.id,
-            }
-          ])
-          .select()
-          .single();
+        const purchase = await createPurchase(customer.id, parseFloat(formData.purchaseAmount), user.id);
 
-        if (purchaseError) {
-          console.error('Purchase creation error:', purchaseError);
-          throw purchaseError;
+        // Generate scratch cards for initial purchase
+        const scratchResult = await handleScratchCardsForPurchase(
+          customer.id,
+          formData.name,
+          formattedPhone,
+          parseFloat(formData.purchaseAmount)
+        );
+
+        if (scratchResult.cardsGenerated > 0) {
+          scratchCardsGenerated = true;
         }
 
         try {
@@ -206,9 +109,43 @@ export const useCustomerCreation = () => {
         }
       }
 
+      // Send welcome SMS only if no scratch cards were generated
+      if (!scratchCardsGenerated) {
+        try {
+          await sendWelcomeSMS(formattedPhone, formData.name);
+        } catch (smsError) {
+          console.error('SMS sending failed, but continuing with customer creation:', smsError);
+        }
+      }
+
+      // Log the activity
+      try {
+        await logActivity(
+          'customer_created',
+          'customer',
+          customer.id,
+          `Added new customer: ${formData.name}`,
+          { 
+            customer_name: formData.name,
+            customer_phone: formattedPhone,
+            auth_account_created: !!customerAuthId,
+            customer_auth_id: customerAuthId,
+            initial_purchase: formData.purchaseAmount ? parseFloat(formData.purchaseAmount) : 0,
+            scratch_cards_generated: scratchCardsGenerated
+          }
+        );
+        console.log('Customer creation activity logged');
+      } catch (activityError) {
+        console.error('Error logging customer creation activity:', activityError);
+      }
+
+      const successMessage = scratchCardsGenerated 
+        ? `${formData.name} has been added and scratch cards have been sent via SMS!`
+        : `${formData.name} has been added and can now login with their phone number using OTP`;
+
       toast({
         title: "Customer Added Successfully",
-        description: `${formData.name} has been added and can now login with their phone number using OTP`,
+        description: successMessage,
       });
 
       onSuccess();

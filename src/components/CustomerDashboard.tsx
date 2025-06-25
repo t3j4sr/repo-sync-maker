@@ -181,17 +181,6 @@ export const CustomerDashboard = () => {
           </div>
         </div>
 
-        {/* Quick Access to Scratch Cards */}
-        <div className="mb-6">
-          <Button
-            onClick={handleViewScratchCards}
-            className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-semibold py-4 rounded-xl shadow-lg text-lg"
-          >
-            <Gift className="w-6 h-6 mr-3" />
-            🎰 Try Your Luck - Scratch Cards Available!
-          </Button>
-        </div>
-
         {/* Customer Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
           <Card className="bg-white shadow-xl">

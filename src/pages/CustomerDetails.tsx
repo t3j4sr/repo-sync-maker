@@ -52,36 +52,26 @@ const CustomerDetails = () => {
     if (!user || !customerId) return;
 
     try {
-      console.log('Fetching customer data for ID:', customerId);
-      
-      // Fetch customer details - remove the user_id filter to get all customers
+      // Fetch customer details
       const { data: customerData, error: customerError } = await supabase
         .from('customers')
         .select('*')
         .eq('id', customerId)
+        .eq('user_id', user.id)
         .single();
 
-      if (customerError) {
-        console.error('Customer fetch error:', customerError);
-        throw customerError;
-      }
-      
-      console.log('Customer data fetched:', customerData);
+      if (customerError) throw customerError;
       setCustomer(customerData);
 
-      // Fetch purchase history - also remove user_id filter
+      // Fetch purchase history
       const { data: purchaseData, error: purchaseError } = await supabase
         .from('purchases')
         .select('*')
         .eq('customer_id', customerId)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (purchaseError) {
-        console.error('Purchase fetch error:', purchaseError);
-        throw purchaseError;
-      }
-      
-      console.log('Purchase data fetched:', purchaseData);
+      if (purchaseError) throw purchaseError;
       setPurchases(purchaseData || []);
 
       // Fetch customer-related activities
@@ -92,9 +82,7 @@ const CustomerDetails = () => {
         .eq('entity_id', customerId)
         .order('created_at', { ascending: false });
 
-      if (activityError) {
-        console.error('Activity fetch error:', activityError);
-      }
+      if (activityError) throw activityError;
       setActivities(activityData || []);
 
     } catch (error) {

@@ -43,10 +43,6 @@ const Index = () => {
     navigate('/activity');
   };
 
-  const handleNavigateToScratchCards = () => {
-    navigate('/scratch-cards');
-  };
-
   const handleCustomerAdded = async () => {
     await fetchCustomers();
   };
@@ -68,7 +64,6 @@ const Index = () => {
       <Header 
         onToggleActivityLog={handleNavigateToActivity}
         onNavigateToProfile={handleNavigateToProfile}
-        onNavigateToScratchCards={handleNavigateToScratchCards}
         showActivityLog={false}
       />
 
@@ -77,16 +72,14 @@ const Index = () => {
         onSearchChange={setSearchQuery}
       />
 
-      <div className="flex-1 bg-white rounded-t-3xl min-h-[calc(100vh-200px)]">
-        <div className="p-4">
-          <CustomersList 
-            showActivityLog={false}
-            groupedCustomers={{ today: [], yesterday: [], older: filteredCustomers }}
-            filteredCustomers={filteredCustomers}
-            customers={customers}
-            onAddPurchase={handleAddPurchase}
-          />
-        </div>
+      <div className="flex-1 bg-white rounded-t-3xl min-h-[calc(100vh-200px)] p-4">
+        <CustomersList 
+          showActivityLog={false}
+          groupedCustomers={{ today: [], yesterday: [], older: filteredCustomers }}
+          filteredCustomers={filteredCustomers}
+          customers={customers}
+          onAddPurchase={handleAddPurchase}
+        />
       </div>
 
       <FloatingAddButton onClick={() => setIsAddModalOpen(true)} />
