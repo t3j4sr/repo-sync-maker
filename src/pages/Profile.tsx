@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -465,20 +464,22 @@ const Profile = () => {
           </Card>
         </div>
 
-        {/* Scratch Cards Section */}
-        <Card className="mb-6">
+        {/* PROMINENT SCRATCH CARDS SECTION - RIGHT AFTER STATS */}
+        <Card className="mb-6 border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Gift className="h-5 w-5" />
-              Send Scratch Cards
+            <CardTitle className="flex items-center gap-2 text-purple-700">
+              <Gift className="h-6 w-6" />
+              🎁 Send Scratch Cards to Your Customers
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="customer-select">Select Customer</Label>
+                <Label htmlFor="customer-select" className="text-sm font-medium text-gray-700">
+                  Select Customer
+                </Label>
                 <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
-                  <SelectTrigger>
+                  <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Choose a customer..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -491,7 +492,9 @@ const Profile = () => {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="card-count">Number of Cards</Label>
+                <Label htmlFor="card-count" className="text-sm font-medium text-gray-700">
+                  Number of Cards (1-10)
+                </Label>
                 <Input
                   id="card-count"
                   type="number"
@@ -499,6 +502,7 @@ const Profile = () => {
                   max="10"
                   value={numberOfCards}
                   onChange={(e) => setNumberOfCards(parseInt(e.target.value) || 1)}
+                  className="mt-1"
                 />
               </div>
             </div>
@@ -506,31 +510,35 @@ const Profile = () => {
             <Button 
               onClick={handleGenerateAndSend} 
               disabled={scratchCardLoading || !selectedCustomerId}
-              className="w-full bg-purple-600 hover:bg-purple-700"
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium py-3"
+              size="lg"
             >
               {scratchCardLoading ? (
                 <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Sending...
+                  <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                  Generating & Sending...
                 </>
               ) : (
                 <>
-                  <Send className="h-4 w-4 mr-2" />
+                  <Send className="h-5 w-5 mr-2" />
                   Generate & Send Scratch Cards
                 </>
               )}
             </Button>
 
             {generatedCodes.length > 0 && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-medium mb-2">Generated Codes:</h4>
-                <div className="grid grid-cols-2 gap-2">
+              <div className="mt-4 p-4 bg-white rounded-lg border border-purple-200">
+                <h4 className="font-medium mb-3 text-purple-700">✅ Generated Codes:</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {generatedCodes.map((code, index) => (
-                    <div key={index} className="bg-white p-2 rounded text-center font-mono text-sm border">
-                      {code}
+                    <div key={index} className="bg-gradient-to-r from-purple-100 to-pink-100 p-3 rounded-lg text-center font-mono text-sm border border-purple-200">
+                      <div className="font-bold text-purple-800">{code}</div>
                     </div>
                   ))}
                 </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  📱 SMS sent to selected customer with scratch card link
+                </p>
               </div>
             )}
           </CardContent>
