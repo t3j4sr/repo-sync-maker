@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -24,6 +23,7 @@ interface ScratchCardData {
   prize_value: number;
   expires_at: string;
   created_at: string;
+  scratched_at: string | null;
 }
 
 const ScratchCardPlay = () => {
