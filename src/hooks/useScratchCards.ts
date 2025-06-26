@@ -11,6 +11,9 @@ export interface ScratchCard {
   scratched_at: string | null;
   created_at: string;
   customer_id: string;
+  prize_type: string;
+  prize_value: number;
+  expires_at: string;
 }
 
 export const useScratchCards = () => {
@@ -75,7 +78,8 @@ export const useScratchCards = () => {
         .from('scratch_cards')
         .update({ 
           is_scratched: true, 
-          scratched_at: new Date().toISOString() 
+          scratched_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour from now
         })
         .eq('id', cardId);
 
@@ -93,7 +97,12 @@ export const useScratchCards = () => {
       setScratchCards(prev => 
         prev.map(card => 
           card.id === cardId 
-            ? { ...card, is_scratched: true, scratched_at: new Date().toISOString() }
+            ? { 
+                ...card, 
+                is_scratched: true, 
+                scratched_at: new Date().toISOString(),
+                expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+              }
             : card
         )
       );
@@ -105,11 +114,27 @@ export const useScratchCards = () => {
     }
   };
 
+  const cleanupExpiredCards = async () => {
+    try {
+      const { data, error } = await supabase.rpc('cleanup_expired_scratch_cards');
+      if (error) {
+        console.error('Error cleaning up expired cards:', error);
+      } else {
+        console.log('Cleaned up expired cards:', data);
+      }
+      return data || 0;
+    } catch (error) {
+      console.error('Error cleaning up expired cards:', error);
+      return 0;
+    }
+  };
+
   return {
     scratchCards,
     loading,
     fetchScratchCards,
     generateScratchCards,
-    markCardAsScratched
+    markCardAsScratched,
+    cleanupExpiredCards
   };
 };

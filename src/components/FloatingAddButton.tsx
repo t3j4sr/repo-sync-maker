@@ -10,10 +10,10 @@ export const FloatingAddButton = ({ onClick }: FloatingAddButtonProps) => {
   return (
     <Button
       onClick={onClick}
-      className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-black hover:bg-gray-800 shadow-lg"
+      className="fixed bottom-6 right-6 w-16 h-16 rounded-full bg-black hover:bg-gray-800 shadow-lg z-50"
       size="icon"
     >
-      <Plus className="w-6 h-6 text-white" />
+      <Plus className="w-8 h-8 text-white" />
     </Button>
   );
 };

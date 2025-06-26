@@ -1,5 +1,5 @@
 
-import { CustomerSection } from "@/components/CustomerSection";
+import { CustomerCard } from "@/components/CustomerCard";
 import { CustomerWithPurchases } from "@/lib/supabase";
 
 interface CustomersListProps {
@@ -15,36 +15,33 @@ interface CustomersListProps {
 }
 
 export const CustomersList = ({ 
-  groupedCustomers, 
   filteredCustomers, 
   customers, 
   onAddPurchase 
 }: CustomersListProps) => {
-  return (
-    <>
-      <CustomerSection 
-        title="Today"
-        customers={groupedCustomers.today}
-        onAddPurchase={onAddPurchase}
-      />
-      
-      <CustomerSection 
-        title="Yesterday"
-        customers={groupedCustomers.yesterday}
-        onAddPurchase={onAddPurchase}
-      />
-      
-      <CustomerSection 
-        title="Earlier"
-        customers={groupedCustomers.older}
-        onAddPurchase={onAddPurchase}
-      />
+  const displayCustomers = filteredCustomers.length > 0 ? filteredCustomers : customers;
 
-      {filteredCustomers.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          {customers.length === 0 ? "No customers yet. Add your first customer!" : "No customers found"}
-        </div>
-      )}
-    </>
+  if (displayCustomers.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        <p className="text-lg font-medium">No customers yet</p>
+        <p className="text-sm">Add your first customer using the + button below</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-gray-500 font-medium text-sm">Earlier</h2>
+      <div className="space-y-3">
+        {displayCustomers.map((customer) => (
+          <CustomerCard 
+            key={customer.id} 
+            customer={customer} 
+            onAddPurchase={onAddPurchase}
+          />
+        ))}
+      </div>
+    </div>
   );
 };

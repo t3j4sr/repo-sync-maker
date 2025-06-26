@@ -25,7 +25,7 @@ const Index = () => {
   });
   
   const { customers, loading, fetchCustomers } = useCustomers();
-  const { filteredCustomers, groupedCustomers } = useCustomerFiltering(customers, searchQuery);
+  const { filteredCustomers } = useCustomerFiltering(customers, searchQuery);
 
   const handleAddPurchase = (customerId: string, customerName: string) => {
     setPurchaseModal({
@@ -37,6 +37,10 @@ const Index = () => {
 
   const handleNavigateToProfile = () => {
     navigate('/profile');
+  };
+
+  const handleNavigateToActivity = () => {
+    navigate('/activity');
   };
 
   const handleCustomerAdded = async () => {
@@ -58,7 +62,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800">
       <Header 
-        onToggleActivityLog={() => {}}
+        onToggleActivityLog={handleNavigateToActivity}
         onNavigateToProfile={handleNavigateToProfile}
         showActivityLog={false}
       />
@@ -71,7 +75,7 @@ const Index = () => {
       <div className="flex-1 bg-white rounded-t-3xl min-h-[calc(100vh-200px)] p-4">
         <CustomersList 
           showActivityLog={false}
-          groupedCustomers={groupedCustomers}
+          groupedCustomers={{ today: [], yesterday: [], older: filteredCustomers }}
           filteredCustomers={filteredCustomers}
           customers={customers}
           onAddPurchase={handleAddPurchase}
