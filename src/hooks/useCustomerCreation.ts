@@ -75,34 +75,32 @@ export const useCustomerCreation = () => {
       const customerAuthId = await createCustomerAuthAccount(customer.id, formattedPhone, formData.name);
       
       let scratchCardsGenerated = 0;
-      let shouldSendCombinedSMS = false;
+      let shouldSendScratchCardSMS = false;
 
       // Handle initial purchase if provided
       if (customer && purchaseAmount > 0) {
         const purchase = await createPurchase(customer.id, purchaseAmount, user.id);
 
-        // Generate scratch cards for initial purchase if >= 150
-        if (purchaseAmount >= 150) {
-          console.log('Generating scratch cards for purchase of Rs', purchaseAmount);
-          
-          try {
-            const scratchResult = await handleScratchCardsForPurchase(
-              customer.id,
-              formData.name,
-              formattedPhone,
-              purchaseAmount
-            );
+        // ALWAYS generate scratch cards for ANY purchase amount > 0
+        console.log('Generating scratch cards for purchase of Rs', purchaseAmount);
+        
+        try {
+          const scratchResult = await handleScratchCardsForPurchase(
+            customer.id,
+            formData.name,
+            formattedPhone,
+            purchaseAmount
+          );
 
-            console.log('Scratch cards result:', scratchResult);
+          console.log('Scratch cards result:', scratchResult);
 
-            if (scratchResult.cardsGenerated > 0) {
-              scratchCardsGenerated = scratchResult.cardsGenerated;
-              shouldSendCombinedSMS = true;
-              console.log('Should send combined SMS with', scratchCardsGenerated, 'cards');
-            }
-          } catch (scratchError) {
-            console.error('Error generating scratch cards:', scratchError);
+          if (scratchResult.cardsGenerated > 0) {
+            scratchCardsGenerated = scratchResult.cardsGenerated;
+            shouldSendScratchCardSMS = true;
+            console.log('Will send scratch card SMS with', scratchCardsGenerated, 'cards');
           }
+        } catch (scratchError) {
+          console.error('Error generating scratch cards:', scratchError);
         }
 
         try {
@@ -114,30 +112,51 @@ export const useCustomerCreation = () => {
             { 
               customer_id: customer.id,
               customer_name: formData.name,
-              amount: purchaseAmount
+              amount: purchaseAmount,
+              scratch_cards_generated: scratchCardsGenerated
             }
           );
           console.log('Initial purchase activity logged');
         } catch (activityError) {
           console.error('Error logging initial purchase activity:', activityError);
         }
+      } else {
+        // Even without purchase, generate 1 scratch card for new customers
+        console.log('Generating welcome scratch card for new customer');
+        
+        try {
+          const scratchResult = await handleScratchCardsForPurchase(
+            customer.id,
+            formData.name,
+            formattedPhone,
+            0 // No purchase amount
+          );
+
+          console.log('Welcome scratch cards result:', scratchResult);
+
+          if (scratchResult.cardsGenerated > 0) {
+            scratchCardsGenerated = scratchResult.cardsGenerated;
+            shouldSendScratchCardSMS = true;
+            console.log('Will send welcome scratch card SMS with', scratchCardsGenerated, 'cards');
+          }
+        } catch (scratchError) {
+          console.error('Error generating welcome scratch cards:', scratchError);
+        }
       }
 
-      // Send appropriate SMS
+      // Send scratch card SMS with link
       try {
-        if (shouldSendCombinedSMS && scratchCardsGenerated > 0) {
-          console.log('Sending combined welcome + scratch card SMS');
-          // Send combined welcome + scratch card SMS using sendScratchCardSMS
+        if (shouldSendScratchCardSMS && scratchCardsGenerated > 0) {
+          console.log('Sending scratch card SMS with link');
           await sendScratchCardSMS(
             formattedPhone,
             formData.name,
             scratchCardsGenerated,
             purchaseAmount,
-            true // indicates this is a combined welcome + scratch card SMS
+            true // indicates this is a welcome + scratch card SMS
           );
         } else {
           console.log('Sending regular welcome SMS');
-          // Send regular welcome SMS
           await sendWelcomeSMS(formattedPhone, formData.name);
         }
       } catch (smsError) {
@@ -165,7 +184,7 @@ export const useCustomerCreation = () => {
         console.error('Error logging customer creation activity:', activityError);
       }
 
-      const successMessage = shouldSendCombinedSMS 
+      const successMessage = shouldSendScratchCardSMS 
         ? `${formData.name} has been added and ${scratchCardsGenerated} scratch card${scratchCardsGenerated > 1 ? 's' : ''} have been sent via SMS!`
         : `${formData.name} has been added and can now login with their phone number using OTP`;
 

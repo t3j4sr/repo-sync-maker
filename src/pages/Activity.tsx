@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { ArrowLeft, Activity, User, ShoppingCart, CreditCard, Search } from "lucide-react";
+import { ArrowLeft, Activity, User, ShoppingCart, CreditCard, Search, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import type { ActivityLog } from "@/lib/supabase";
@@ -48,6 +48,12 @@ const ActivityPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleTestScratchCards = () => {
+    // Open scratch cards page with a test phone number
+    const testUrl = `/scratch-cards?phone=+919999999999`;
+    window.open(testUrl, '_blank');
   };
 
   const getActionIcon = (actionType: string) => {
@@ -105,6 +111,15 @@ const ActivityPage = () => {
           </Button>
           <h1 className="text-2xl font-bold">Activity Log</h1>
         </div>
+        <Button
+          onClick={handleTestScratchCards}
+          variant="ghost"
+          size="sm"
+          className="text-white hover:bg-white/20"
+        >
+          <ExternalLink className="w-4 h-4 mr-2" />
+          Test Scratch Cards
+        </Button>
       </div>
 
       <div className="flex-1 bg-white rounded-t-3xl min-h-[calc(100vh-80px)] p-6">
@@ -120,6 +135,25 @@ const ActivityPage = () => {
             />
           </div>
         </div>
+
+        {/* Test Scratch Cards Section */}
+        <Card className="mb-6 border-purple-200">
+          <CardHeader>
+            <CardTitle className="text-purple-600">Test Scratch Cards</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">
+              Test the scratch cards functionality with a demo link
+            </p>
+            <Button
+              onClick={handleTestScratchCards}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Open Test Link
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Activities List */}
         <div className="space-y-4">
