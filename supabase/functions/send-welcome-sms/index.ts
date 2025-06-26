@@ -60,12 +60,16 @@ serve(async (req) => {
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
     
     // Build scratch card link that the customer can open to view their cards
-    const scratchCardUrl = `https://mpzwlxpbhipnzizthftb.supabase.co/scratch-cards?phone=${encodeURIComponent(formattedPhone)}`
+    const scratchCardUrl = `https://mpzwlxpbhipnzizthftb.supabase.co/play-scratch-cards?phone=${encodeURIComponent(formattedPhone)}`
     
     const body = new URLSearchParams({
       To: formattedPhone,
       From: fromNumber,
-      Body: `Welcome ${name}! You are now registered for Lucky Draw. 🎁 Scratch your card(s) here: ${scratchCardUrl}  Good luck!`
+      Body: `Welcome ${name}! You are now registered for Lucky Draw. 🎁 
+
+🎫 Scratch your cards here: ${scratchCardUrl}
+
+Good luck! 🍀`
     })
 
     const response = await fetch(twilioUrl, {
