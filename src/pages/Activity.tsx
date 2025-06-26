@@ -4,10 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { ArrowLeft, Activity, User, ShoppingCart, CreditCard, Search, ExternalLink } from "lucide-react";
+import { ArrowLeft, Activity, User, ShoppingCart, CreditCard, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import type { ActivityLog } from "@/lib/supabase";
@@ -19,7 +18,6 @@ const ActivityPage = () => {
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [testPhone, setTestPhone] = useState("");
 
   useEffect(() => {
     if (user) {
@@ -83,23 +81,6 @@ const ActivityPage = () => {
     activity.action_type.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleTestScratchCards = () => {
-    if (!testPhone) {
-      toast({
-        title: "Error",
-        description: "Please enter a phone number",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const formattedPhone = testPhone.startsWith('+') ? testPhone : `+91${testPhone.replace(/\D/g, '')}`;
-    const testUrl = `/play-scratch-cards?phone=${encodeURIComponent(formattedPhone)}`;
-    
-    // Open in new tab
-    window.open(testUrl, '_blank');
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 flex items-center justify-center">
@@ -127,43 +108,6 @@ const ActivityPage = () => {
       </div>
 
       <div className="flex-1 bg-white rounded-t-3xl min-h-[calc(100vh-80px)] p-6">
-        {/* Test Scratch Cards Section */}
-        <Card className="mb-6 bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-purple-700">
-              <CreditCard className="w-5 h-5" />
-              Test Scratch Cards
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                Test the scratch card page directly without waiting for SMS. Enter any phone number to see the scratch card interface.
-              </p>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Label htmlFor="testPhone">Phone Number</Label>
-                  <Input
-                    id="testPhone"
-                    value={testPhone}
-                    onChange={(e) => setTestPhone(e.target.value)}
-                    placeholder="+91XXXXXXXXXX or 10-digit number"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button 
-                    onClick={handleTestScratchCards}
-                    className="bg-purple-600 hover:bg-purple-700"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Open Test Page
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Search */}
         <div className="mb-6">
           <div className="relative">

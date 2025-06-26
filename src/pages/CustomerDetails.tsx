@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Activity } from "lucide-react";
+import { ArrowLeft, Plus, Activity, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -118,6 +119,13 @@ const CustomerDetails = () => {
     }
   };
 
+  const handleTestScratchCards = () => {
+    if (!customer) return;
+    
+    const testUrl = `/play-scratch-cards?phone=${encodeURIComponent(customer.phone)}`;
+    window.open(testUrl, '_blank');
+  };
+
   const totalPurchases = purchases.reduce((sum, purchase) => sum + purchase.amount, 0);
 
   const formatDate = (dateString: string) => {
@@ -161,14 +169,25 @@ const CustomerDetails = () => {
           </Button>
           <h1 className="text-2xl font-bold">Customer Details</h1>
         </div>
-        <Button
-          onClick={() => setShowActivities(!showActivities)}
-          variant="ghost"
-          size="sm"
-          className="text-white hover:bg-white/20"
-        >
-          <Activity className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleTestScratchCards}
+            variant="ghost"
+            size="sm"
+            className="text-white hover:bg-white/20"
+          >
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Test Link
+          </Button>
+          <Button
+            onClick={() => setShowActivities(!showActivities)}
+            variant="ghost"
+            size="sm"
+            className="text-white hover:bg-white/20"
+          >
+            <Activity className="w-5 h-5" />
+          </Button>
+        </div>
       </div>
 
       {/* Content */}

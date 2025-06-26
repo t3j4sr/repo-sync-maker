@@ -83,16 +83,25 @@ export const useCustomerCreation = () => {
 
         // Generate scratch cards for initial purchase if >= 150
         if (purchaseAmount >= 150) {
-          const scratchResult = await handleScratchCardsForPurchase(
-            customer.id,
-            formData.name,
-            formattedPhone,
-            purchaseAmount
-          );
+          console.log('Generating scratch cards for purchase of Rs', purchaseAmount);
+          
+          try {
+            const scratchResult = await handleScratchCardsForPurchase(
+              customer.id,
+              formData.name,
+              formattedPhone,
+              purchaseAmount
+            );
 
-          if (scratchResult.cardsGenerated > 0) {
-            scratchCardsGenerated = scratchResult.cardsGenerated;
-            shouldSendCombinedSMS = true;
+            console.log('Scratch cards result:', scratchResult);
+
+            if (scratchResult.cardsGenerated > 0) {
+              scratchCardsGenerated = scratchResult.cardsGenerated;
+              shouldSendCombinedSMS = true;
+              console.log('Should send combined SMS with', scratchCardsGenerated, 'cards');
+            }
+          } catch (scratchError) {
+            console.error('Error generating scratch cards:', scratchError);
           }
         }
 
@@ -117,8 +126,9 @@ export const useCustomerCreation = () => {
       // Send appropriate SMS
       try {
         if (shouldSendCombinedSMS && scratchCardsGenerated > 0) {
-          // Send combined welcome + scratch card SMS using the welcome SMS function
-          await sendWelcomeSMS(
+          console.log('Sending combined welcome + scratch card SMS');
+          // Send combined welcome + scratch card SMS using sendScratchCardSMS
+          await sendScratchCardSMS(
             formattedPhone,
             formData.name,
             scratchCardsGenerated,
@@ -126,6 +136,7 @@ export const useCustomerCreation = () => {
             true // indicates this is a combined welcome + scratch card SMS
           );
         } else {
+          console.log('Sending regular welcome SMS');
           // Send regular welcome SMS
           await sendWelcomeSMS(formattedPhone, formData.name);
         }
