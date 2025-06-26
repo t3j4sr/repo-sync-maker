@@ -117,13 +117,13 @@ export const useCustomerCreation = () => {
       // Send appropriate SMS
       try {
         if (shouldSendCombinedSMS && scratchCardsGenerated > 0) {
-          // Send combined welcome + scratch card SMS
-          await sendScratchCardSMS(
+          // Send combined welcome + scratch card SMS using the welcome SMS function
+          await sendWelcomeSMS(
             formattedPhone,
             formData.name,
             scratchCardsGenerated,
             purchaseAmount,
-            true // indicates this is a welcome + scratch card SMS
+            true // indicates this is a combined welcome + scratch card SMS
           );
         } else {
           // Send regular welcome SMS

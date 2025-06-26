@@ -5,14 +5,17 @@ import { useToast } from "@/hooks/use-toast";
 export const useSMSService = () => {
   const { toast } = useToast();
 
-  const sendWelcomeSMS = async (phone: string, name: string) => {
+  const sendWelcomeSMS = async (phone: string, name: string, cardsCount?: number, totalPurchase?: number, isWelcomeSMS?: boolean) => {
     try {
       console.log('Attempting to send welcome SMS to:', phone, 'for:', name);
       
       const { data, error } = await supabase.functions.invoke('send-welcome-sms', {
         body: {
           phone: phone,
-          name: name
+          name: name,
+          cardsCount: cardsCount,
+          totalPurchase: totalPurchase,
+          isWelcomeSMS: isWelcomeSMS
         }
       });
 

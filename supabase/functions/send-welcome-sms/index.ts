@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { phone, name } = await req.json()
+    const { phone, name, cardsCount, totalPurchase, isWelcomeSMS } = await req.json()
     
     if (!phone || !name) {
       return new Response(
@@ -59,17 +59,32 @@ serve(async (req) => {
     // Send SMS using Twilio API
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
     
-    // Build scratch card link that the customer can open to view their cards
+    // Build scratch card link
     const scratchCardUrl = `https://mpzwlxpbhipnzizthftb.supabase.co/play-scratch-cards?phone=${encodeURIComponent(formattedPhone)}`
     
-    const body = new URLSearchParams({
-      To: formattedPhone,
-      From: fromNumber,
-      Body: `Welcome ${name}! You are now registered for Lucky Draw. 🎁 
+    // Create appropriate message based on whether it's a combined message or just welcome
+    let messageBody = '';
+    
+    if (isWelcomeSMS && cardsCount && totalPurchase) {
+      // Combined welcome + scratch card message
+      messageBody = `🎉 Welcome ${name}! You have been registered and earned ${cardsCount} scratch card${cardsCount > 1 ? 's' : ''} for your Rs ${totalPurchase} purchase.
+
+🎫 Click here to scratch and win: ${scratchCardUrl}
+
+Good luck! 🍀`
+    } else {
+      // Regular welcome message with link
+      messageBody = `Welcome ${name}! You are now registered for Lucky Draw. 🎁 
 
 🎫 Scratch your cards here: ${scratchCardUrl}
 
 Good luck! 🍀`
+    }
+
+    const body = new URLSearchParams({
+      To: formattedPhone,
+      From: fromNumber,
+      Body: messageBody
     })
 
     const response = await fetch(twilioUrl, {
