@@ -13,8 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { useActivityLogger } from "@/hooks/useActivityLogger";
 import { useToast } from "@/hooks/use-toast";
-import { createPurchase } from "@/services/purchaseService";
-import { useScratchCardService } from "@/services/scratchCardService";
+import { useScratchCards } from "@/hooks/useScratchCards";
 
 interface AddPurchaseModalProps {
   open: boolean;
@@ -36,7 +35,7 @@ export const AddPurchaseModal = ({
   const { user } = useAuth();
   const { logActivity } = useActivityLogger();
   const { toast } = useToast();
-  const { handleScratchCardsForPurchase } = useScratchCardService();
+  const { generateScratchCards } = useScratchCards();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,44 +43,46 @@ export const AddPurchaseModal = ({
 
     setLoading(true);
     try {
-      const purchaseAmount = parseFloat(amount);
-      const data = await createPurchase(customerId, purchaseAmount, user.id);
-
-      // Generate scratch cards if purchase is >= 150 Rs
-      if (purchaseAmount >= 150) {
-        // Get customer phone number
-        const { data: customerData, error: customerError } = await supabase
-          .from('customers')
-          .select('phone')
-          .eq('id', customerId)
-          .single();
-
-        if (customerError) {
-          console.error('Error fetching customer phone:', customerError);
-        } else if (customerData?.phone) {
-          const scratchResult = await handleScratchCardsForPurchase(
-            customerId,
-            customerName,
-            customerData.phone,
-            purchaseAmount
-          );
-          
-          if (scratchResult.cardsGenerated > 0) {
-            toast({
-              title: "Purchase Added & Cards Generated!",
-              description: `Added Rs ${amount} purchase for ${customerName}. ${scratchResult.cardsGenerated} new scratch card(s) generated and sent via SMS!`,
-            });
-          } else {
-            toast({
-              title: "Purchase Added",
-              description: `Added Rs ${amount} purchase for ${customerName}`,
-            });
+      console.log('Adding purchase:', { customerId, amount, userId: user.id });
+      
+      const { data, error } = await supabase
+        .from('purchases')
+        .insert([
+          {
+            customer_id: customerId,
+            amount: parseFloat(amount),
+            user_id: user.id,
           }
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding purchase:', error);
+        throw error;
+      }
+
+      console.log('Purchase added successfully:', data);
+
+      // Generate scratch cards for the customer after adding purchase
+      try {
+        const newCardsCount = await generateScratchCards(customerId);
+        if (newCardsCount > 0) {
+          toast({
+            title: "Purchase Added & Cards Generated!",
+            description: `Added Rs ${amount} purchase for ${customerName}. ${newCardsCount} new scratch card(s) generated!`,
+          });
+        } else {
+          toast({
+            title: "Purchase Added",
+            description: `Added Rs ${amount} purchase for ${customerName}`,
+          });
         }
-      } else {
+      } catch (scratchError) {
+        console.error('Error generating scratch cards:', scratchError);
         toast({
           title: "Purchase Added",
-          description: `Added Rs ${amount} purchase for ${customerName}`,
+          description: `Added Rs ${amount} purchase for ${customerName}. Scratch cards will be generated shortly.`,
         });
       }
 
@@ -95,7 +96,7 @@ export const AddPurchaseModal = ({
           { 
             customer_id: customerId,
             customer_name: customerName,
-            amount: purchaseAmount
+            amount: parseFloat(amount)
           }
         );
         console.log('Activity logged successfully');
@@ -137,9 +138,6 @@ export const AddPurchaseModal = ({
               min="0"
               step="0.01"
             />
-            <p className="text-sm text-gray-600">
-              Note: Scratch cards are generated for purchases of Rs 150 or more
-            </p>
           </div>
           <div className="flex gap-2">
             <Button 
