@@ -58,7 +58,10 @@ export const useCustomerCreation = () => {
       const purchaseAmount = parseFloat(formData.purchaseAmount) || 0;
       
       console.log('Formatted data:', { formattedPhone, purchaseAmount });
-      console.log('User ID (raw):', user.id);
+      
+      // Ensure user ID is clean - no encoding
+      const cleanUserId = user.id.toString().trim();
+      console.log('Clean User ID:', cleanUserId);
 
       // Check if customer with this phone already exists
       const { data: existingCustomer } = await supabase
@@ -76,13 +79,13 @@ export const useCustomerCreation = () => {
         return;
       }
 
-      // Create the customer record - ensure user.id is passed as plain string
+      // Create the customer record - use clean user ID
       const { data: customer, error: customerError } = await supabase
         .from('customers')
         .insert({
           name: formData.name,
           phone: formattedPhone,
-          user_id: String(user.id), // Ensure it's a plain string
+          user_id: cleanUserId,
         })
         .select()
         .single();
@@ -93,14 +96,18 @@ export const useCustomerCreation = () => {
       }
 
       console.log('Customer created successfully:', customer);
-      console.log('Customer ID (raw):', customer.id);
+      
+      // Ensure customer ID is also clean
+      const cleanCustomerId = customer.id.toString().trim();
+      console.log('Clean Customer ID:', cleanCustomerId);
+      
       customerCreated = true;
-      customerId = customer.id;
+      customerId = cleanCustomerId;
 
       // Try to create authentication account for the customer (non-blocking)
       let customerAuthId = null;
       try {
-        customerAuthId = await createCustomerAuthAccount(customer.id, formattedPhone, formData.name);
+        customerAuthId = await createCustomerAuthAccount(cleanCustomerId, formattedPhone, formData.name);
         console.log('Customer auth account created:', customerAuthId);
       } catch (authError) {
         console.error('Auth account creation failed (continuing):', authError);
@@ -114,18 +121,16 @@ export const useCustomerCreation = () => {
         try {
           console.log('=== PURCHASE CREATION DEBUG ===');
           console.log('Raw values for purchase:', { 
-            customerId: customer.id, 
-            customerIdType: typeof customer.id,
+            customerId: cleanCustomerId, 
             amount: purchaseAmount, 
-            userId: user.id,
-            userIdType: typeof user.id
+            userId: cleanUserId
           });
           
-          // Create purchase using the service - pass raw values as strings
+          // Create purchase using the service - pass clean values
           const purchaseData = await createPurchase(
-            String(customer.id), // Ensure plain string
+            cleanCustomerId,
             purchaseAmount, 
-            String(user.id) // Ensure plain string
+            cleanUserId
           );
           console.log('Purchase record created successfully:', purchaseData);
           purchaseCreated = true;
@@ -134,7 +139,7 @@ export const useCustomerCreation = () => {
           try {
             console.log('Generating scratch cards for purchase...');
             const scratchResult = await handleScratchCardsForPurchase(
-              customer.id,
+              cleanCustomerId,
               formData.name,
               formattedPhone,
               purchaseAmount
@@ -156,7 +161,7 @@ export const useCustomerCreation = () => {
               purchaseData.id,
               `Added initial purchase of Rs ${purchaseAmount} for ${formData.name}`,
               { 
-                customer_id: customer.id,
+                customer_id: cleanCustomerId,
                 customer_name: formData.name,
                 amount: purchaseAmount,
                 scratch_cards_generated: scratchCardsGenerated
@@ -201,7 +206,7 @@ export const useCustomerCreation = () => {
         await logActivity(
           'customer_created',
           'customer',
-          customer.id,
+          cleanCustomerId,
           `Added new customer: ${formData.name}`,
           { 
             customer_name: formData.name,

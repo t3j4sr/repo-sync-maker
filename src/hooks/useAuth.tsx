@@ -1,3 +1,4 @@
+
 import { useState, useEffect, createContext, useContext } from 'react'
 import { User, AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
@@ -183,7 +184,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { error: { message: 'Invalid phone number or password' } };
       }
 
-      // Use consistent email format with phone for auth
+      // Use consistent email format with phone for auth - NO ENCODING
       const email = `${normalizedPhone.replace('+', '')}@shopkeeper.app`;
       console.log('Trying auth with email:', email);
       

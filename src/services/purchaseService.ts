@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 
 export const createPurchase = async (customerId: string, amount: number, userId: string) => {
   try {
-    console.log('Creating purchase:', { customerId, amount, userId });
+    console.log('Creating purchase with raw inputs:', { customerId, amount, userId });
     
     // Validate inputs - ensure they are plain strings/numbers
     if (!customerId || !userId) {
@@ -20,23 +20,27 @@ export const createPurchase = async (customerId: string, amount: number, userId:
       throw new Error('Purchase amount must be a valid number');
     }
 
-    // Ensure IDs are plain strings (no encoding)
-    const plainCustomerId = String(customerId);
-    const plainUserId = String(userId);
+    // Ensure IDs are clean strings - no encoding, no special processing
+    const cleanCustomerId = customerId.toString().trim();
+    const cleanUserId = userId.toString().trim();
+    
+    // Remove any potential encoding artifacts
+    const finalCustomerId = cleanCustomerId.replace(/[^a-zA-Z0-9-]/g, '');
+    const finalUserId = cleanUserId.replace(/[^a-zA-Z0-9-]/g, '');
 
-    console.log('Validated data:', { 
-      customerId: plainCustomerId, 
+    console.log('Processed data for insert:', { 
+      customer_id: finalCustomerId, 
       amount: numericAmount, 
-      userId: plainUserId 
+      user_id: finalUserId 
     });
 
     // Create purchase record in the purchases table
     const { data, error } = await supabase
       .from('purchases')
       .insert({
-        customer_id: plainCustomerId,
+        customer_id: finalCustomerId,
         amount: numericAmount,
-        user_id: plainUserId,
+        user_id: finalUserId,
       })
       .select()
       .single();
