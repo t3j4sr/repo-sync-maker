@@ -48,6 +48,9 @@ export const useCustomerCreation = () => {
     }
 
     setLoading(true);
+    let customerCreated = false;
+    let customerId = null;
+
     try {
       console.log('Adding customer:', formData);
       
@@ -89,6 +92,8 @@ export const useCustomerCreation = () => {
       }
 
       console.log('Customer created successfully:', customer);
+      customerCreated = true;
+      customerId = customer.id;
 
       // Try to create authentication account for the customer (non-blocking)
       let customerAuthId = null;
@@ -100,33 +105,35 @@ export const useCustomerCreation = () => {
       }
       
       let scratchCardsGenerated = false;
+      let purchaseCreated = false;
 
-      // Handle initial purchase if provided
+      // Handle initial purchase if provided - ALWAYS CREATE PURCHASE FOR ANY AMOUNT > 0
       if (customer && purchaseAmount > 0) {
         try {
+          console.log('=== PURCHASE CREATION DEBUG ===');
           console.log('Creating initial purchase:', { customerId: customer.id, amount: purchaseAmount, userId: user.id });
           
-          // Create purchase using the service
+          // Create purchase using the service with detailed logging
           const purchaseData = await createPurchase(customer.id, purchaseAmount, user.id);
           console.log('Purchase record created successfully:', purchaseData);
+          purchaseCreated = true;
 
-          // Generate scratch cards if purchase is over 150
-          if (purchaseAmount > 150) {
-            try {
-              const scratchResult = await handleScratchCardsForPurchase(
-                customer.id,
-                formData.name,
-                formattedPhone,
-                purchaseAmount
-              );
+          // ALWAYS generate scratch cards regardless of amount
+          try {
+            console.log('Generating scratch cards for purchase...');
+            const scratchResult = await handleScratchCardsForPurchase(
+              customer.id,
+              formData.name,
+              formattedPhone,
+              purchaseAmount
+            );
 
-              if (scratchResult.cardsGenerated > 0) {
-                scratchCardsGenerated = true;
-                console.log('Scratch cards generated:', scratchResult.cardsGenerated);
-              }
-            } catch (scratchError) {
-              console.error('Error generating scratch cards:', scratchError);
+            if (scratchResult.success && scratchResult.cardsGenerated > 0) {
+              scratchCardsGenerated = true;
+              console.log('Scratch cards generated:', scratchResult.cardsGenerated);
             }
+          } catch (scratchError) {
+            console.error('Error generating scratch cards (non-blocking):', scratchError);
           }
 
           // Log purchase activity
@@ -140,7 +147,7 @@ export const useCustomerCreation = () => {
                 customer_id: customer.id,
                 customer_name: formData.name,
                 amount: purchaseAmount,
-                eligible_for_scratch_cards: purchaseAmount > 150
+                scratch_cards_generated: scratchCardsGenerated
               }
             );
             console.log('Initial purchase activity logged');
@@ -148,10 +155,17 @@ export const useCustomerCreation = () => {
             console.error('Error logging initial purchase activity:', activityError);
           }
         } catch (purchaseError) {
+          console.error('=== PURCHASE CREATION FAILED ===');
           console.error('Purchase creation error:', purchaseError);
+          console.error('Error details:', {
+            message: purchaseError.message,
+            code: purchaseError.code,
+            details: purchaseError.details
+          });
+          
           toast({
             title: "Customer Added",
-            description: `${formData.name} has been added, but there was an issue with the purchase: ${purchaseError.message}. You can add the purchase separately.`,
+            description: `${formData.name} has been added, but there was an issue creating the purchase: ${purchaseError.message}. You can add the purchase separately.`,
             variant: "destructive",
           });
         }
@@ -160,6 +174,7 @@ export const useCustomerCreation = () => {
       // Send welcome SMS only if no scratch cards were generated
       if (!scratchCardsGenerated) {
         try {
+          console.log('Sending welcome SMS...');
           await sendWelcomeSMS(formattedPhone, formData.name);
           console.log('Welcome SMS sent');
         } catch (smsError) {
@@ -180,6 +195,7 @@ export const useCustomerCreation = () => {
             auth_account_created: !!customerAuthId,
             customer_auth_id: customerAuthId,
             initial_purchase: purchaseAmount,
+            purchase_created: purchaseCreated,
             scratch_cards_generated: scratchCardsGenerated
           }
         );
@@ -190,6 +206,8 @@ export const useCustomerCreation = () => {
 
       const successMessage = scratchCardsGenerated 
         ? `${formData.name} has been added and scratch cards have been sent via SMS!`
+        : purchaseCreated
+        ? `${formData.name} has been added with purchase of Rs ${purchaseAmount}!`
         : `${formData.name} has been added successfully!`;
 
       toast({
@@ -200,11 +218,22 @@ export const useCustomerCreation = () => {
       onSuccess();
     } catch (error) {
       console.error('Error adding customer:', error);
-      toast({
-        title: "Error",
-        description: `Failed to add customer: ${error.message}`,
-        variant: "destructive",
-      });
+      
+      // If customer was created but purchase failed, still consider it a partial success
+      if (customerCreated && customerId) {
+        toast({
+          title: "Partial Success",
+          description: `Customer ${formData.name} was created but there were issues with additional operations. Check the console for details.`,
+          variant: "destructive",
+        });
+        onSuccess(); // Still call success to refresh the list
+      } else {
+        toast({
+          title: "Error",
+          description: `Failed to add customer: ${error.message}`,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
