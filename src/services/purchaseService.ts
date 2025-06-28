@@ -5,7 +5,7 @@ export const createPurchase = async (customerId: string, amount: number, userId:
   try {
     console.log('Creating purchase:', { customerId, amount, userId });
     
-    // Validate inputs
+    // Validate inputs - ensure they are plain strings/numbers
     if (!customerId || !userId) {
       throw new Error('Customer ID and User ID are required');
     }
@@ -20,17 +20,23 @@ export const createPurchase = async (customerId: string, amount: number, userId:
       throw new Error('Purchase amount must be a valid number');
     }
 
-    console.log('Validated data:', { customerId, amount: numericAmount, userId });
+    // Ensure IDs are plain strings (no encoding)
+    const plainCustomerId = String(customerId);
+    const plainUserId = String(userId);
+
+    console.log('Validated data:', { 
+      customerId: plainCustomerId, 
+      amount: numericAmount, 
+      userId: plainUserId 
+    });
 
     // Create purchase record in the purchases table
-    // Using both user_id and created_by to ensure compatibility
     const { data, error } = await supabase
       .from('purchases')
       .insert({
-        customer_id: customerId,
+        customer_id: plainCustomerId,
         amount: numericAmount,
-        user_id: userId,
-        created_by: userId, // Adding this field as it might be expected
+        user_id: plainUserId,
       })
       .select()
       .single();

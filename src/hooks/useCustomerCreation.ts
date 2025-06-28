@@ -58,6 +58,7 @@ export const useCustomerCreation = () => {
       const purchaseAmount = parseFloat(formData.purchaseAmount) || 0;
       
       console.log('Formatted data:', { formattedPhone, purchaseAmount });
+      console.log('User ID (raw):', user.id);
 
       // Check if customer with this phone already exists
       const { data: existingCustomer } = await supabase
@@ -75,13 +76,13 @@ export const useCustomerCreation = () => {
         return;
       }
 
-      // Create the customer record
+      // Create the customer record - ensure user.id is passed as plain string
       const { data: customer, error: customerError } = await supabase
         .from('customers')
         .insert({
           name: formData.name,
           phone: formattedPhone,
-          user_id: user.id,
+          user_id: String(user.id), // Ensure it's a plain string
         })
         .select()
         .single();
@@ -92,6 +93,7 @@ export const useCustomerCreation = () => {
       }
 
       console.log('Customer created successfully:', customer);
+      console.log('Customer ID (raw):', customer.id);
       customerCreated = true;
       customerId = customer.id;
 
@@ -107,18 +109,28 @@ export const useCustomerCreation = () => {
       let scratchCardsGenerated = false;
       let purchaseCreated = false;
 
-      // Handle initial purchase if provided - ALWAYS CREATE PURCHASE FOR ANY AMOUNT > 0
+      // Handle purchase creation - ALWAYS CREATE FOR ANY AMOUNT > 0
       if (customer && purchaseAmount > 0) {
         try {
           console.log('=== PURCHASE CREATION DEBUG ===');
-          console.log('Creating initial purchase:', { customerId: customer.id, amount: purchaseAmount, userId: user.id });
+          console.log('Raw values for purchase:', { 
+            customerId: customer.id, 
+            customerIdType: typeof customer.id,
+            amount: purchaseAmount, 
+            userId: user.id,
+            userIdType: typeof user.id
+          });
           
-          // Create purchase using the service with detailed logging
-          const purchaseData = await createPurchase(customer.id, purchaseAmount, user.id);
+          // Create purchase using the service - pass raw values as strings
+          const purchaseData = await createPurchase(
+            String(customer.id), // Ensure plain string
+            purchaseAmount, 
+            String(user.id) // Ensure plain string
+          );
           console.log('Purchase record created successfully:', purchaseData);
           purchaseCreated = true;
 
-          // ALWAYS generate scratch cards regardless of amount
+          // ALWAYS generate scratch cards
           try {
             console.log('Generating scratch cards for purchase...');
             const scratchResult = await handleScratchCardsForPurchase(
@@ -171,8 +183,10 @@ export const useCustomerCreation = () => {
         }
       }
 
-      // Send welcome SMS only if no scratch cards were generated
-      if (!scratchCardsGenerated) {
+      // Send welcome SMS or scratch card SMS
+      if (scratchCardsGenerated) {
+        console.log('Scratch cards were generated and SMS sent');
+      } else {
         try {
           console.log('Sending welcome SMS...');
           await sendWelcomeSMS(formattedPhone, formData.name);
