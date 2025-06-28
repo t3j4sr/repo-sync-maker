@@ -87,6 +87,7 @@ export type Database = {
           id: string
           name: string
           phone: string
+          scratch_cards: Json | null
           user_id: string
         }
         Insert: {
@@ -95,6 +96,7 @@ export type Database = {
           id?: string
           name: string
           phone: string
+          scratch_cards?: Json | null
           user_id: string
         }
         Update: {
@@ -103,6 +105,7 @@ export type Database = {
           id?: string
           name?: string
           phone?: string
+          scratch_cards?: Json | null
           user_id?: string
         }
         Relationships: []

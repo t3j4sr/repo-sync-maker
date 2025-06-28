@@ -12,7 +12,6 @@ interface SMSRequest {
   customerName: string;
   cardsCount: number;
   totalPurchase: number;
-  isWelcomeSMS?: boolean;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -23,9 +22,9 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { phone, customerName, cardsCount, totalPurchase, isWelcomeSMS = false }: SMSRequest = await req.json();
+    const { phone, customerName, cardsCount, totalPurchase }: SMSRequest = await req.json();
     
-    console.log('Processing SMS for:', { phone, customerName, cardsCount, totalPurchase, isWelcomeSMS });
+    console.log('Processing SMS for:', { phone, customerName, cardsCount, totalPurchase });
 
     const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
     const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');
@@ -39,23 +38,11 @@ const handler = async (req: Request): Promise<Response> => {
     // Create the scratch card link
     const scratchCardUrl = `https://mpzwlxpbhipnzizthftb.supabase.co/scratch-cards?phone=${encodeURIComponent(phone)}`;
     
-    let message: string;
-    
-    if (isWelcomeSMS) {
-      // Combined welcome + scratch card message
-      message = `🎉 Welcome ${customerName}! You have been registered and earned ${cardsCount} scratch card${cardsCount > 1 ? 's' : ''} for your Rs ${totalPurchase} purchase!
-
-🎫 Click here to scratch and win: ${scratchCardUrl}
-
-Good luck! 🍀`;
-    } else {
-      // Regular scratch card message
-      message = `🎉 Congratulations ${customerName}! You've earned ${cardsCount} scratch card${cardsCount > 1 ? 's' : ''} for your Rs ${totalPurchase} purchase! 
+    const message = `🎉 Congratulations ${customerName}! You've earned ${cardsCount} scratch card${cardsCount > 1 ? 's' : ''} for your Rs ${totalPurchase} purchase! 
 
 🎫 Click here to scratch your cards and win exciting prizes: ${scratchCardUrl}
 
 Valid for 1 hour only. Good luck! 🍀`;
-    }
 
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
     

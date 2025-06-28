@@ -12,7 +12,6 @@ import Activity from "./pages/Activity";
 import CustomerDetails from "./pages/CustomerDetails";
 import CustomerApp from "./pages/CustomerApp";
 import ScratchCards from "./pages/ScratchCards";
-import ScratchCardPlay from "./pages/ScratchCardPlay";
 import NotFound from "./pages/NotFound";
 import { Suspense, lazy } from "react";
 
@@ -111,10 +110,6 @@ const AppRoutes = () => {
           <Route
             path="/scratch-cards"
             element={<ScratchCards />}
-          />
-          <Route
-            path="/play-scratch-cards"
-            element={<ScratchCardPlay />}
           />
           <Route path="*" element={<NotFound />} />
         </Routes>
