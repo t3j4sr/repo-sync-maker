@@ -42,25 +42,25 @@ export const useCustomerCreation = () => {
   };
 
   const createCustomer = async (formData: CustomerFormData, onSuccess: () => void) => {
-    if (!user) {
-      console.error('No user found');
+    if (!user?.id) {
+      console.error('No user ID available');
+      toast({
+        title: "Error",
+        description: "User authentication required",
+        variant: "destructive",
+      });
       return;
     }
 
     setLoading(true);
-    let customerCreated = false;
-    let customerId = null;
 
     try {
-      console.log('Adding customer:', formData);
-      
       const formattedPhone = formatPhoneNumber(formData.phone);
       const purchaseAmount = parseFloat(formData.purchaseAmount) || 0;
       
-      console.log('Formatted data:', { formattedPhone, purchaseAmount });
-      console.log('Raw User ID from auth:', user.id);
+      console.log('Creating customer:', { name: formData.name, phone: formattedPhone });
 
-      // Check if customer with this phone already exists
+      // Check if customer exists
       const { data: existingCustomer } = await supabase
         .from('customers')
         .select('id')
@@ -76,118 +76,69 @@ export const useCustomerCreation = () => {
         return;
       }
 
-      // Create the customer record
+      // Create customer
       const { data: customer, error: customerError } = await supabase
         .from('customers')
         .insert({
           name: formData.name,
           phone: formattedPhone,
-          user_id: user.id, // Use user.id directly without any processing
+          user_id: user.id,
         })
         .select()
         .single();
 
       if (customerError) {
-        console.error('Customer creation error:', customerError);
-        throw new Error(`Failed to create customer: ${customerError.message}`);
+        throw new Error(`Customer creation failed: ${customerError.message}`);
       }
 
-      console.log('Customer created successfully:', customer);
-      
-      customerCreated = true;
-      customerId = customer.id;
+      console.log('Customer created:', customer);
 
-      // Try to create authentication account for the customer (non-blocking)
-      let customerAuthId = null;
+      // Create auth account (non-blocking)
       try {
-        customerAuthId = await createCustomerAuthAccount(customer.id, formattedPhone, formData.name);
-        console.log('Customer auth account created:', customerAuthId);
+        await createCustomerAuthAccount(customer.id, formattedPhone, formData.name);
       } catch (authError) {
-        console.error('Auth account creation failed (continuing):', authError);
+        console.error('Auth account creation failed:', authError);
       }
-      
-      let scratchCardsGenerated = false;
-      let purchaseCreated = false;
 
-      // Handle purchase creation - use raw IDs without any processing
-      if (customer && purchaseAmount > 0) {
+      // Create purchase if amount > 0
+      let purchaseCreated = false;
+      if (purchaseAmount > 0) {
         try {
-          console.log('Creating purchase with raw values:', { 
-            customerId: customer.id, 
-            amount: purchaseAmount, 
-            userId: user.id
-          });
-          
-          // Pass IDs exactly as they are - no cleaning or processing
-          const purchaseData = await createPurchase(
-            customer.id,    // Raw customer ID from database
-            purchaseAmount, 
-            user.id        // Raw user ID from auth
-          );
-          console.log('Purchase record created successfully:', purchaseData);
+          await createPurchase(customer.id, purchaseAmount, user.id);
           purchaseCreated = true;
+          console.log('Purchase created successfully');
 
           // Generate scratch cards
           try {
-            console.log('Generating scratch cards for purchase...');
-            const scratchResult = await handleScratchCardsForPurchase(
+            await handleScratchCardsForPurchase(
               customer.id,
               formData.name,
               formattedPhone,
               purchaseAmount
             );
-
-            if (scratchResult.success && scratchResult.cardsGenerated > 0) {
-              scratchCardsGenerated = true;
-              console.log('Scratch cards generated:', scratchResult.cardsGenerated);
-            }
           } catch (scratchError) {
-            console.error('Error generating scratch cards (non-blocking):', scratchError);
-          }
-
-          // Log purchase activity
-          try {
-            await logActivity(
-              'purchase_added',
-              'purchase',
-              purchaseData.id,
-              `Added initial purchase of Rs ${purchaseAmount} for ${formData.name}`,
-              { 
-                customer_id: customer.id,
-                customer_name: formData.name,
-                amount: purchaseAmount,
-                scratch_cards_generated: scratchCardsGenerated
-              }
-            );
-            console.log('Initial purchase activity logged');
-          } catch (activityError) {
-            console.error('Error logging initial purchase activity:', activityError);
+            console.error('Scratch card generation failed:', scratchError);
           }
         } catch (purchaseError) {
           console.error('Purchase creation failed:', purchaseError);
-          
           toast({
-            title: "Customer Added",
-            description: `${formData.name} has been added, but there was an issue creating the purchase: ${purchaseError.message}. You can add the purchase separately.`,
+            title: "Partial Success",
+            description: `Customer added but purchase failed: ${purchaseError.message}`,
             variant: "destructive",
           });
         }
       }
 
-      // Send welcome SMS or scratch card SMS
-      if (scratchCardsGenerated) {
-        console.log('Scratch cards were generated and SMS sent');
-      } else {
+      // Send welcome SMS
+      if (!purchaseCreated) {
         try {
-          console.log('Sending welcome SMS...');
           await sendWelcomeSMS(formattedPhone, formData.name);
-          console.log('Welcome SMS sent');
         } catch (smsError) {
-          console.error('SMS sending failed, but continuing with customer creation:', smsError);
+          console.error('SMS failed:', smsError);
         }
       }
 
-      // Log the customer creation activity
+      // Log activity
       try {
         await logActivity(
           'customer_created',
@@ -197,48 +148,27 @@ export const useCustomerCreation = () => {
           { 
             customer_name: formData.name,
             customer_phone: formattedPhone,
-            auth_account_created: !!customerAuthId,
-            customer_auth_id: customerAuthId,
             initial_purchase: purchaseAmount,
-            purchase_created: purchaseCreated,
-            scratch_cards_generated: scratchCardsGenerated
+            purchase_created: purchaseCreated
           }
         );
-        console.log('Customer creation activity logged');
       } catch (activityError) {
-        console.error('Error logging customer creation activity:', activityError);
+        console.error('Activity logging failed:', activityError);
       }
 
-      const successMessage = scratchCardsGenerated 
-        ? `${formData.name} has been added and scratch cards have been sent via SMS!`
-        : purchaseCreated
-        ? `${formData.name} has been added with purchase of Rs ${purchaseAmount}!`
-        : `${formData.name} has been added successfully!`;
-
       toast({
-        title: "Customer Added Successfully",
-        description: successMessage,
+        title: "Success",
+        description: `${formData.name} has been added successfully!`,
       });
 
       onSuccess();
     } catch (error) {
-      console.error('Error adding customer:', error);
-      
-      // If customer was created but purchase failed, still consider it a partial success
-      if (customerCreated && customerId) {
-        toast({
-          title: "Partial Success",
-          description: `Customer ${formData.name} was created but there were issues with additional operations. Check the console for details.`,
-          variant: "destructive",
-        });
-        onSuccess(); // Still call success to refresh the list
-      } else {
-        toast({
-          title: "Error",
-          description: `Failed to add customer: ${error.message}`,
-          variant: "destructive",
-        });
-      }
+      console.error('Customer creation failed:', error);
+      toast({
+        title: "Error",
+        description: `Failed to add customer: ${error.message}`,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
