@@ -1,9 +1,8 @@
-
 import { supabase } from "@/lib/supabase";
 
 export const createPurchase = async (customerId: string, amount: number, userId: string) => {
   try {
-    console.log('Creating purchase:', { customerId, amount, userId });
+    console.log('Creating purchase:', { customerId, amount, userId, amountType: typeof amount });
     
     // Validate inputs
     if (!customerId || !userId) {
@@ -20,7 +19,7 @@ export const createPurchase = async (customerId: string, amount: number, userId:
       throw new Error('Purchase amount must be a valid number');
     }
 
-    console.log('Validated data:', { customerId, amount: numericAmount, userId });
+    console.log('Validated data:', { customerId, amount: numericAmount, userId, amountType: typeof numericAmount });
 
     // Create purchase record in the purchases table
     const { data, error } = await supabase

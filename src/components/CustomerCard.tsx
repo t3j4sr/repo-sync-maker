@@ -1,4 +1,4 @@
-
+import React from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -22,6 +22,8 @@ export const CustomerCard = ({ customer, onAddPurchase }: CustomerCardProps) => 
     onAddPurchase(customer.id, customer.name);
   };
 
+  const totalPurchases = customer.total_purchases || 0;
+
   return (
     <div 
       className="flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors"
@@ -40,7 +42,9 @@ export const CustomerCard = ({ customer, onAddPurchase }: CustomerCardProps) => 
       </div>
       <div className="flex items-center gap-3">
         <div className="text-right">
-          <span className="font-semibold text-gray-900 text-lg">Rs {customer.total_purchases || 0}</span>
+          <span className="font-semibold text-gray-900 text-lg">
+            Rs {totalPurchases.toFixed(2)}
+          </span>
         </div>
         <Button
           size="sm"

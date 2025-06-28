@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,9 +51,9 @@ export const useCustomerCreation = () => {
       console.log('Adding customer:', formData);
       
       const formattedPhone = formatPhoneNumber(formData.phone);
-      const purchaseAmount = parseFloat(formData.purchaseAmount) || 0;
+      const purchaseAmount = parseFloat(formData.purchaseAmount.trim()) || 0;
       
-      console.log('Formatted data:', { formattedPhone, purchaseAmount });
+      console.log('Formatted data:', { formattedPhone, purchaseAmount, amountType: typeof purchaseAmount });
 
       // Check if customer with this phone already exists
       const { data: existingCustomer } = await supabase
@@ -135,7 +134,7 @@ export const useCustomerCreation = () => {
               'purchase_added',
               'purchase',
               purchaseData.id,
-              `Added initial purchase of Rs ${purchaseAmount} for ${formData.name}`,
+              `Added initial purchase of Rs ${purchaseAmount.toFixed(2)} for ${formData.name}`,
               { 
                 customer_id: customer.id,
                 customer_name: formData.name,

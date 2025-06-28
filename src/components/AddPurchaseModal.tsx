@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -41,22 +40,34 @@ export const AddPurchaseModal = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !amount) return;
+    if (!user || !amount.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid purchase amount",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setLoading(true);
     try {
-      const purchaseAmount = parseFloat(amount);
+      const purchaseAmount = parseFloat(amount.trim());
       
       if (isNaN(purchaseAmount) || purchaseAmount <= 0) {
         toast({
           title: "Invalid Amount",
-          description: "Please enter a valid purchase amount",
+          description: "Please enter a valid purchase amount greater than 0",
           variant: "destructive",
         });
         return;
       }
 
-      console.log('Adding purchase:', { customerId, amount: purchaseAmount, userId: user.id });
+      console.log('Adding purchase:', { 
+        customerId, 
+        amount: purchaseAmount, 
+        userId: user.id,
+        amountType: typeof purchaseAmount 
+      });
       
       // Create purchase
       const purchase = await createPurchase(customerId, purchaseAmount, user.id);
@@ -85,12 +96,12 @@ export const AddPurchaseModal = ({
             if (scratchResult.cardsGenerated > 0) {
               toast({
                 title: "Purchase Added & Scratch Cards Generated!",
-                description: `Purchase of Rs ${amount} added and ${scratchResult.cardsGenerated} scratch card(s) sent to ${customerName}`,
+                description: `Purchase of Rs ${purchaseAmount.toFixed(2)} added and ${scratchResult.cardsGenerated} scratch card(s) sent to ${customerName}`,
               });
             } else {
               toast({
                 title: "Purchase Added",
-                description: `Purchase of Rs ${amount} added for ${customerName}`,
+                description: `Purchase of Rs ${purchaseAmount.toFixed(2)} added for ${customerName}`,
               });
             }
           }
@@ -98,13 +109,13 @@ export const AddPurchaseModal = ({
           console.error('Error with scratch cards:', scratchError);
           toast({
             title: "Purchase Added",
-            description: `Purchase of Rs ${amount} added for ${customerName} (scratch cards had an issue)`,
+            description: `Purchase of Rs ${purchaseAmount.toFixed(2)} added for ${customerName} (scratch cards had an issue)`,
           });
         }
       } else {
         toast({
           title: "Purchase Added",
-          description: `Purchase of Rs ${amount} added for ${customerName}`,
+          description: `Purchase of Rs ${purchaseAmount.toFixed(2)} added for ${customerName}`,
         });
       }
 
@@ -114,7 +125,7 @@ export const AddPurchaseModal = ({
           'purchase_added',
           'purchase',
           purchase.id,
-          `Added purchase of Rs ${amount} for ${customerName}`,
+          `Added purchase of Rs ${purchaseAmount.toFixed(2)} for ${customerName}`,
           { 
             customer_id: customerId,
             customer_name: customerName,
@@ -157,7 +168,7 @@ export const AddPurchaseModal = ({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="amount">Purchase Amount</Label>
+            <Label htmlFor="amount">Purchase Amount (Rs)</Label>
             <Input
               id="amount"
               type="number"

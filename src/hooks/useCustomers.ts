@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase, CustomerWithPurchases } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,11 +31,19 @@ export const useCustomers = () => {
 
       console.log('Customers fetched:', data);
 
-      const customersWithTotals = data?.map(customer => ({
-        ...customer,
-        total_purchases: customer.purchases?.reduce((sum: number, purchase: any) => sum + purchase.amount, 0) || 0
-      })) || [];
+      const customersWithTotals = data?.map(customer => {
+        const totalPurchases = customer.purchases?.reduce((sum: number, purchase: any) => {
+          const amount = purchase.amount || 0;
+          return sum + amount;
+        }, 0) || 0;
+        
+        return {
+          ...customer,
+          total_purchases: totalPurchases
+        };
+      }) || [];
 
+      console.log('Customers with totals:', customersWithTotals);
       setCustomers(customersWithTotals);
     } catch (error) {
       console.error('Error fetching customers:', error);

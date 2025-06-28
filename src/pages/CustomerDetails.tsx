@@ -24,14 +24,20 @@ interface Purchase {
   created_at: string;
   customer_id: string;
   user_id: string;
+  customer?: {
+    name: string;
+    phone: string;
+  };
 }
 
 interface ActivityLog {
   id: string;
-  action_type: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
   description: string;
-  created_at: string;
   metadata: any;
+  created_at: string;
 }
 
 const CustomerDetails = () => {
@@ -63,10 +69,13 @@ const CustomerDetails = () => {
       if (customerError) throw customerError;
       setCustomer(customerData);
 
-      // Fetch purchase history
+      // Fetch purchase history with customer details
       const { data: purchaseData, error: purchaseError } = await supabase
         .from('purchases')
-        .select('*')
+        .select(`
+          *,
+          customer:customers(name, phone)
+        `)
         .eq('customer_id', customerId)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
@@ -118,7 +127,7 @@ const CustomerDetails = () => {
     }
   };
 
-  const totalPurchases = purchases.reduce((sum, purchase) => sum + purchase.amount, 0);
+  const totalPurchases = purchases.reduce((sum, purchase) => sum + (purchase.amount || 0), 0);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -149,26 +158,21 @@ const CustomerDetails = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 text-white">
-        <div className="flex items-center gap-3">
+      <div className="px-4 pt-6 pb-4">
+        <div className="flex items-center gap-4">
           <Button
-            onClick={() => navigate('/')}
             variant="ghost"
             size="sm"
-            className="text-white hover:bg-white/20"
+            onClick={() => navigate(-1)}
+            className="text-white hover:bg-white/10"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-2xl font-bold">Customer Details</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-white">Customer Details</h1>
+            <p className="text-purple-200">Manage customer information and purchases</p>
+          </div>
         </div>
-        <Button
-          onClick={() => setShowActivities(!showActivities)}
-          variant="ghost"
-          size="sm"
-          className="text-white hover:bg-white/20"
-        >
-          <Activity className="w-5 h-5" />
-        </Button>
       </div>
 
       {/* Content */}
@@ -210,7 +214,7 @@ const CustomerDetails = () => {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-purple-600">
-                Rs {totalPurchases}
+                Rs {totalPurchases.toFixed(2)}
               </div>
               <p className="text-gray-600">
                 {purchases.length} {purchases.length === 1 ? 'purchase' : 'purchases'}
@@ -221,15 +225,26 @@ const CustomerDetails = () => {
           {/* Purchase History or Activities */}
           <Card>
             <CardHeader>
-              <CardTitle>
-                {showActivities ? 'Customer Activity History' : 'Purchase History'}
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>
+                  {showActivities ? 'Activity History' : 'Purchase History'}
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowActivities(!showActivities)}
+                  className="flex items-center gap-2"
+                >
+                  <Activity className="w-4 h-4" />
+                  {showActivities ? 'Show Purchases' : 'Show Activities'}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {showActivities ? (
                 activities.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    No activities recorded for this customer
+                    No activities yet
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -261,11 +276,16 @@ const CustomerDetails = () => {
                         className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
                       >
                         <div>
-                          <div className="font-medium">Rs {purchase.amount}</div>
+                          <div className="font-medium">Rs {purchase.amount?.toFixed(2) || '0.00'}</div>
                           <div className="text-sm text-gray-500">
                             {formatDate(purchase.created_at)}
                           </div>
                         </div>
+                        {purchase.customer && (
+                          <div className="text-right text-sm text-gray-500">
+                            {purchase.customer.name}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
