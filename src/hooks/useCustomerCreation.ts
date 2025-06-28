@@ -58,10 +58,7 @@ export const useCustomerCreation = () => {
       const purchaseAmount = parseFloat(formData.purchaseAmount) || 0;
       
       console.log('Formatted data:', { formattedPhone, purchaseAmount });
-      
-      // Ensure user ID is clean - no encoding
-      const cleanUserId = user.id.toString().trim();
-      console.log('Clean User ID:', cleanUserId);
+      console.log('Raw User ID from auth:', user.id);
 
       // Check if customer with this phone already exists
       const { data: existingCustomer } = await supabase
@@ -79,13 +76,13 @@ export const useCustomerCreation = () => {
         return;
       }
 
-      // Create the customer record - use clean user ID
+      // Create the customer record
       const { data: customer, error: customerError } = await supabase
         .from('customers')
         .insert({
           name: formData.name,
           phone: formattedPhone,
-          user_id: cleanUserId,
+          user_id: user.id, // Use user.id directly without any processing
         })
         .select()
         .single();
@@ -97,17 +94,13 @@ export const useCustomerCreation = () => {
 
       console.log('Customer created successfully:', customer);
       
-      // Ensure customer ID is also clean
-      const cleanCustomerId = customer.id.toString().trim();
-      console.log('Clean Customer ID:', cleanCustomerId);
-      
       customerCreated = true;
-      customerId = cleanCustomerId;
+      customerId = customer.id;
 
       // Try to create authentication account for the customer (non-blocking)
       let customerAuthId = null;
       try {
-        customerAuthId = await createCustomerAuthAccount(cleanCustomerId, formattedPhone, formData.name);
+        customerAuthId = await createCustomerAuthAccount(customer.id, formattedPhone, formData.name);
         console.log('Customer auth account created:', customerAuthId);
       } catch (authError) {
         console.error('Auth account creation failed (continuing):', authError);
@@ -116,30 +109,29 @@ export const useCustomerCreation = () => {
       let scratchCardsGenerated = false;
       let purchaseCreated = false;
 
-      // Handle purchase creation - ALWAYS CREATE FOR ANY AMOUNT > 0
+      // Handle purchase creation - use raw IDs without any processing
       if (customer && purchaseAmount > 0) {
         try {
-          console.log('=== PURCHASE CREATION DEBUG ===');
-          console.log('Raw values for purchase:', { 
-            customerId: cleanCustomerId, 
+          console.log('Creating purchase with raw values:', { 
+            customerId: customer.id, 
             amount: purchaseAmount, 
-            userId: cleanUserId
+            userId: user.id
           });
           
-          // Create purchase using the service - pass clean values
+          // Pass IDs exactly as they are - no cleaning or processing
           const purchaseData = await createPurchase(
-            cleanCustomerId,
+            customer.id,    // Raw customer ID from database
             purchaseAmount, 
-            cleanUserId
+            user.id        // Raw user ID from auth
           );
           console.log('Purchase record created successfully:', purchaseData);
           purchaseCreated = true;
 
-          // ALWAYS generate scratch cards
+          // Generate scratch cards
           try {
             console.log('Generating scratch cards for purchase...');
             const scratchResult = await handleScratchCardsForPurchase(
-              cleanCustomerId,
+              customer.id,
               formData.name,
               formattedPhone,
               purchaseAmount
@@ -161,7 +153,7 @@ export const useCustomerCreation = () => {
               purchaseData.id,
               `Added initial purchase of Rs ${purchaseAmount} for ${formData.name}`,
               { 
-                customer_id: cleanCustomerId,
+                customer_id: customer.id,
                 customer_name: formData.name,
                 amount: purchaseAmount,
                 scratch_cards_generated: scratchCardsGenerated
@@ -172,13 +164,7 @@ export const useCustomerCreation = () => {
             console.error('Error logging initial purchase activity:', activityError);
           }
         } catch (purchaseError) {
-          console.error('=== PURCHASE CREATION FAILED ===');
-          console.error('Purchase creation error:', purchaseError);
-          console.error('Error details:', {
-            message: purchaseError.message,
-            code: purchaseError.code,
-            details: purchaseError.details
-          });
+          console.error('Purchase creation failed:', purchaseError);
           
           toast({
             title: "Customer Added",
@@ -206,7 +192,7 @@ export const useCustomerCreation = () => {
         await logActivity(
           'customer_created',
           'customer',
-          cleanCustomerId,
+          customer.id,
           `Added new customer: ${formData.name}`,
           { 
             customer_name: formData.name,
