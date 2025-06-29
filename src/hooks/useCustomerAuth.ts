@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -30,16 +29,27 @@ export const useCustomerAuth = () => {
     setAuthState(prev => ({ ...prev, isLoading: true }));
     
     try {
-      // Clean the phone number
-      const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+      // Clean the phone number more thoroughly
+      let cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+      
+      // Remove any leading zeros or country code variations
+      if (cleanPhone.startsWith('0')) {
+        cleanPhone = cleanPhone.substring(1);
+      }
+      if (cleanPhone.startsWith('+91')) {
+        cleanPhone = cleanPhone.substring(3);
+      }
+      if (cleanPhone.startsWith('91') && cleanPhone.length === 12) {
+        cleanPhone = cleanPhone.substring(2);
+      }
       
       console.log('Searching for phone:', cleanPhone);
       
-      // Check if customer exists
+      // Check if customer exists with multiple phone format variations
       const { data: customers, error } = await supabase
         .from('customers')
         .select('*')
-        .or(`phone.eq.${cleanPhone},phone.eq.+91${cleanPhone},phone.eq.91${cleanPhone}`);
+        .or(`phone.eq.${cleanPhone},phone.eq.+91${cleanPhone},phone.eq.91${cleanPhone},phone.eq.0${cleanPhone}`);
       
       if (error) {
         console.error('Database error:', error);
@@ -63,10 +73,15 @@ export const useCustomerAuth = () => {
       // Generate OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       
+      // Format phone for SMS (ensure it has +91 prefix)
+      const smsPhone = cleanPhone.startsWith('+91') ? cleanPhone : `+91${cleanPhone}`;
+      
+      console.log('Sending OTP to:', smsPhone);
+      
       // Send OTP via Supabase Edge Function
       const { data, error: otpError } = await supabase.functions.invoke('send-otp', {
         body: { 
-          phone: cleanPhone.startsWith('+91') ? cleanPhone : `+91${cleanPhone}`, 
+          phone: smsPhone, 
           otp 
         }
       });
@@ -75,7 +90,7 @@ export const useCustomerAuth = () => {
         console.error('OTP sending error:', otpError);
         toast({
           title: "SMS Error",
-          description: "Failed to send OTP. Please try again.",
+          description: "Failed to send OTP. Please try again or contact support.",
           variant: "destructive",
         });
         return { success: false };

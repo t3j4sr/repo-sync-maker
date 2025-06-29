@@ -15,10 +15,24 @@ serve(async (req) => {
   try {
     const { phone, otp } = await req.json()
 
+    console.log('Received OTP request for phone:', phone)
+    console.log('OTP to send:', otp)
+
+    // Validate input
+    if (!phone || !otp) {
+      throw new Error('Phone number and OTP are required')
+    }
+
     // Twilio SMS sending
     const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')
     const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
     const twilioPhone = Deno.env.get('TWILIO_PHONE_NUMBER')
+
+    console.log('Twilio config check:', {
+      accountSid: accountSid ? 'Set' : 'Missing',
+      authToken: authToken ? 'Set' : 'Missing',
+      twilioPhone: twilioPhone ? 'Set' : 'Missing'
+    })
 
     if (!accountSid || !authToken || !twilioPhone) {
       throw new Error('Twilio credentials not configured')
@@ -27,6 +41,8 @@ serve(async (req) => {
     const message = `Your OTP for Sri Krishna Groceries scratch card is: ${otp}. Valid for 10 minutes.`
 
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
+    
+    console.log('Sending SMS to:', phone)
     
     const twilioResponse = await fetch(twilioUrl, {
       method: 'POST',
@@ -43,8 +59,8 @@ serve(async (req) => {
 
     if (!twilioResponse.ok) {
       const errorText = await twilioResponse.text()
-      console.error('Twilio error:', errorText)
-      throw new Error(`Twilio API error: ${twilioResponse.status}`)
+      console.error('Twilio error response:', errorText)
+      throw new Error(`Twilio API error: ${twilioResponse.status} - ${errorText}`)
     }
 
     const twilioResult = await twilioResponse.json()
@@ -61,7 +77,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error sending OTP SMS:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: 'Check function logs for more information'
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500 
