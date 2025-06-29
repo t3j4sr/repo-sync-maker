@@ -60,14 +60,20 @@ const ScratchCardGame = () => {
       return;
     }
 
+    console.log('About to scratch card:', cardId);
     const success = await scratchCard(cardId);
+    
     if (success) {
-      // Refetch cards to get updated data
-      await refetchCards();
-      // Navigate to a different card if available
+      console.log('Card scratched successfully, refetching data...');
+      // Wait a moment for the database to update, then refetch
+      setTimeout(async () => {
+        await refetchCards();
+        console.log('Cards refetched after scratch');
+      }, 500);
+      
+      // Navigate to next available card if any
       const availableCards = scratchCards.scratch_cards.filter(c => !c.is_scratched);
       if (availableCards.length > 1) {
-        // Find next available card
         const nextIndex = availableCards.findIndex(c => c.id !== cardId);
         if (nextIndex !== -1) {
           setSelectedCardIndex(nextIndex);
@@ -149,18 +155,24 @@ const ScratchCardGame = () => {
     );
   }
 
-  // Filter out expired scratched cards from the main game view
-  const availableCards = scratchCards.scratch_cards.filter(card => 
-    !card.is_scratched || (card.is_scratched && !isCardExpired(card))
-  ).filter(card => !card.is_scratched);
-  
-  const currentCard = availableCards[selectedCardIndex];
+  // Calculate card statistics
+  const totalCards = scratchCards.scratch_cards.length;
+  const unscatchedCards = scratchCards.scratch_cards.filter(card => !card.is_scratched);
+  const scratchedCards = scratchCards.scratch_cards.filter(card => card.is_scratched);
+  const activeCards = scratchedCards.filter(card => !isCardExpired(card));
+  const expiredCards = scratchedCards.filter(card => isCardExpired(card));
 
-  // Show all cards count for debugging
-  console.log('Total cards:', scratchCards.scratch_cards.length);
-  console.log('Available cards:', availableCards.length);
+  const currentCard = unscatchedCards[selectedCardIndex];
 
-  if (scratchCards.scratch_cards.length === 0) {
+  console.log('Card statistics:', {
+    totalCards,
+    unscatchedCards: unscatchedCards.length,
+    scratchedCards: scratchedCards.length,
+    activeCards: activeCards.length,
+    expiredCards: expiredCards.length
+  });
+
+  if (totalCards === 0) {
     return (
       <div className="text-center text-white w-full max-w-lg mx-auto">
         <div className="flex items-center justify-center gap-2 mb-4">
@@ -196,15 +208,20 @@ const ScratchCardGame = () => {
           <div className="text-center">
             <h3 className="text-xl font-bold mb-2">All Cards Used or Expired</h3>
             <p className="text-gray-300 mb-4">
-              You've scratched all your available cards or they have expired. Make another purchase to get more!
+              You've scratched all your available cards. Make another purchase to get more!
             </p>
-            <div className="mt-4">
-              <Button onClick={() => window.location.href = '/collection'} className="mr-2">
-                View All Cards
-              </Button>
-              <Button onClick={handleRefresh}>
-                Check for New Cards
-              </Button>
+            <div className="mt-4 space-y-2">
+              <div className="text-sm text-gray-400">
+                Total: {totalCards} | Active: {activeCards.length} | Expired: {expiredCards.length}
+              </div>
+              <div className="space-x-2">
+                <Button onClick={() => window.location.href = '/collection'} className="mr-2">
+                  View All Cards
+                </Button>
+                <Button onClick={handleRefresh}>
+                  Check for New Cards
+                </Button>
+              </div>
             </div>
           </div>
         </Card>
@@ -229,9 +246,10 @@ const ScratchCardGame = () => {
           <Sparkles className="w-8 h-8 text-yellow-400" />
         </div>
         <p className="text-gray-300 text-xl mb-2">Scratch here for your coupon</p>
-        <p className="text-gray-400 text-sm">
-          Available cards: {availableCards.length} | Total cards: {scratchCards.scratch_cards.length}
-        </p>
+        <div className="text-gray-400 text-sm space-y-1">
+          <p>Unscratched: {unscatchedCards.length}/{totalCards}</p>
+          <p>Active: {activeCards.length} | Expired: {expiredCards.length}</p>
+        </div>
       </motion.div>
 
       {/* Scratch Card */}
@@ -249,9 +267,9 @@ const ScratchCardGame = () => {
       </motion.div>
 
       {/* Card Navigation */}
-      {availableCards.length > 1 && (
+      {unscatchedCards.length > 1 && (
         <div className="flex justify-center gap-2 mb-6">
-          {availableCards.map((_, index) => (
+          {unscatchedCards.map((_, index) => (
             <button
               key={index}
               onClick={() => setSelectedCardIndex(index)}

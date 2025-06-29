@@ -25,13 +25,13 @@ const CollectionPage = () => {
     loadCustomerData();
   }, []);
 
-  // Refresh every minute to update expired cards
+  // Refresh every 30 seconds to update card states and timers
   useEffect(() => {
     const interval = setInterval(() => {
       if (refetchCards) {
         refetchCards();
       }
-    }, 60000);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [refetchCards]);
@@ -81,9 +81,11 @@ const CollectionPage = () => {
     const success = await scratchCard(cardId);
     
     if (success) {
-      // Refetch the cards to get updated data
-      await refetchCards();
-      toast.success('Card revealed successfully!');
+      // Wait a moment for the database to update, then refetch
+      setTimeout(async () => {
+        await refetchCards();
+        console.log('Cards refetched after reveal');
+      }, 500);
     }
   };
 
@@ -107,6 +109,13 @@ const CollectionPage = () => {
   const activeCards = cards.filter(card => card.is_scratched && !isCardExpired(card));
   const expiredCards = cards.filter(card => card.is_scratched && isCardExpired(card));
   const unscatchedCards = cards.filter(card => !card.is_scratched);
+
+  console.log('Collection page card counts:', {
+    total: cards.length,
+    active: activeCards.length,
+    expired: expiredCards.length,
+    unscratched: unscatchedCards.length
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-blue-800">
@@ -194,7 +203,7 @@ const CollectionPage = () => {
                 <div>
                   <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-green-400" />
-                    Active Discounts
+                    Active Discounts ({activeCards.length})
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {activeCards.map((card, index) => (
@@ -212,10 +221,12 @@ const CollectionPage = () => {
                                 {getDiscountDisplay(card)}
                               </div>
                               {card.expires_at && (
-                                <CountdownTimer 
-                                  expiresAt={card.expires_at}
-                                  onExpire={() => refetchCards?.()}
-                                />
+                                <div className="mt-2">
+                                  <CountdownTimer 
+                                    expiresAt={card.expires_at}
+                                    onExpire={() => refetchCards?.()}
+                                  />
+                                </div>
                               )}
                             </div>
                             <p className="text-green-200 text-sm">
@@ -225,6 +236,9 @@ const CollectionPage = () => {
                           <div className="text-xs text-white/60 text-center">
                             <div>From: {card.shop_name}</div>
                             <div>Earned: {new Date(card.created_at).toLocaleDateString()}</div>
+                            {card.scratched_at && (
+                              <div>Scratched: {new Date(card.scratched_at).toLocaleString()}</div>
+                            )}
                           </div>
                         </Card>
                       </motion.div>
@@ -238,7 +252,7 @@ const CollectionPage = () => {
                 <div>
                   <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                     <Gift className="w-5 h-5 text-yellow-400" />
-                    Ready to Scratch
+                    Ready to Scratch ({unscatchedCards.length})
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {unscatchedCards.map((card, index) => (
@@ -259,7 +273,7 @@ const CollectionPage = () => {
                                 size="sm"
                                 disabled={card.is_scratched}
                               >
-                                {card.is_scratched ? 'Already Revealed' : 'Reveal Prize'}
+                                Reveal Prize
                               </Button>
                             </div>
                           </div>
@@ -279,7 +293,7 @@ const CollectionPage = () => {
                 <div>
                   <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                     <Clock className="w-5 h-5 text-red-400" />
-                    Expired Cards
+                    Expired Cards ({expiredCards.length})
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {expiredCards.map((card, index) => (
@@ -304,6 +318,9 @@ const CollectionPage = () => {
                           <div className="text-xs text-white/60 text-center">
                             <div>From: {card.shop_name}</div>
                             <div>Earned: {new Date(card.created_at).toLocaleDateString()}</div>
+                            {card.scratched_at && (
+                              <div>Scratched: {new Date(card.scratched_at).toLocaleString()}</div>
+                            )}
                           </div>
                         </Card>
                       </motion.div>

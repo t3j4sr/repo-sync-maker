@@ -104,10 +104,10 @@ export const scratchCardById = async (cardId: string): Promise<boolean> => {
   try {
     console.log('Attempting to scratch card:', cardId);
     
-    // First check if card is already scratched
+    // First check if card exists and get its current state
     const { data: existingCard, error: checkError } = await supabase
       .from('scratch_cards')
-      .select('is_scratched')
+      .select('*')
       .eq('id', cardId)
       .single();
 
@@ -117,7 +117,13 @@ export const scratchCardById = async (cardId: string): Promise<boolean> => {
       return false;
     }
 
-    if (existingCard?.is_scratched) {
+    if (!existingCard) {
+      console.log('Card not found');
+      toast.error('Card not found');
+      return false;
+    }
+
+    if (existingCard.is_scratched) {
       console.log('Card already scratched');
       toast.error('Card has already been scratched');
       return false;
@@ -131,14 +137,16 @@ export const scratchCardById = async (cardId: string): Promise<boolean> => {
     console.log('Setting expires at:', expiresAt.toISOString());
     
     // Update the scratch card status in the database
-    const { error } = await supabase
+    const { data: updatedCard, error } = await supabase
       .from('scratch_cards')
       .update({ 
         is_scratched: true, 
         scratched_at: scratchTime.toISOString(),
         expires_at: expiresAt.toISOString()
       })
-      .eq('id', cardId);
+      .eq('id', cardId)
+      .select()
+      .single();
 
     if (error) {
       console.error('Error updating scratch card:', error);
@@ -146,7 +154,14 @@ export const scratchCardById = async (cardId: string): Promise<boolean> => {
       return false;
     }
 
-    toast.success('Card scratched successfully! Valid for 60 minutes.');
+    console.log('Card successfully updated:', updatedCard);
+    
+    // Show success message with prize details
+    const prizeMessage = existingCard.discount_type === 'better_luck' 
+      ? 'Better luck next time! Keep shopping for more chances.'
+      : `Congratulations! You won ₹${existingCard.discount_value} OFF! Valid for 60 minutes.`;
+    
+    toast.success(prizeMessage);
     return true;
   } catch (err) {
     console.error('Error scratching card:', err);

@@ -17,6 +17,13 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ expiresAt, onExpire }) 
       const expiry = new Date(expiresAt).getTime();
       const difference = expiry - now;
 
+      console.log('Timer update:', {
+        now: new Date(now).toISOString(),
+        expiry: new Date(expiry).toISOString(),
+        difference,
+        differenceMinutes: Math.floor(difference / (1000 * 60))
+      });
+
       if (difference <= 0) {
         setExpired(true);
         setTimeLeft(null);
@@ -28,9 +35,13 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ expiresAt, onExpire }) 
       const seconds = Math.floor((difference % (1000 * 60)) / 1000);
       
       setTimeLeft({ minutes, seconds });
+      setExpired(false);
     };
 
+    // Update immediately
     updateTimer();
+    
+    // Update every second
     const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
@@ -38,19 +49,28 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ expiresAt, onExpire }) 
 
   if (expired) {
     return (
-      <div className="flex items-center gap-1 text-red-400 text-sm">
+      <div className="flex items-center justify-center gap-1 text-red-400 text-sm">
         <Clock className="w-4 h-4" />
         <span>Expired</span>
       </div>
     );
   }
 
-  if (!timeLeft) return null;
+  if (!timeLeft) {
+    return (
+      <div className="flex items-center justify-center gap-1 text-gray-400 text-sm">
+        <Clock className="w-4 h-4" />
+        <span>Loading...</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex items-center gap-1 text-yellow-400 text-sm">
+    <div className="flex items-center justify-center gap-1 text-yellow-400 text-sm">
       <Clock className="w-4 h-4" />
-      <span>{timeLeft.minutes}m {timeLeft.seconds}s left</span>
+      <span>
+        {timeLeft.minutes}m {timeLeft.seconds}s left
+      </span>
     </div>
   );
 };
