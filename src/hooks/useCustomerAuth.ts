@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -12,8 +13,6 @@ interface AuthState {
   customer: Customer | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  otpSent: boolean;
-  pendingPhone: string;
 }
 
 export const useCustomerAuth = () => {
@@ -21,11 +20,9 @@ export const useCustomerAuth = () => {
     customer: null,
     isAuthenticated: false,
     isLoading: false,
-    otpSent: false,
-    pendingPhone: '',
   });
 
-  const sendOTP = async (phone: string) => {
+  const authenticateUser = async (phone: string) => {
     setAuthState(prev => ({ ...prev, isLoading: true }));
     
     try {
@@ -70,88 +67,7 @@ export const useCustomerAuth = () => {
         return { success: false };
       }
 
-      // Generate OTP
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      
-      // Format phone for SMS (ensure it has +91 prefix)
-      const smsPhone = cleanPhone.startsWith('+91') ? cleanPhone : `+91${cleanPhone}`;
-      
-      console.log('Sending OTP to:', smsPhone);
-      
-      // Send OTP via Supabase Edge Function
-      const { data, error: otpError } = await supabase.functions.invoke('send-otp', {
-        body: { 
-          phone: smsPhone, 
-          otp 
-        }
-      });
-
-      if (otpError) {
-        console.error('OTP sending error:', otpError);
-        toast({
-          title: "SMS Error",
-          description: "Failed to send OTP. Please try again or contact support.",
-          variant: "destructive",
-        });
-        return { success: false };
-      }
-
-      // Store OTP in localStorage temporarily (in production, use secure storage)
-      localStorage.setItem('pending_otp', otp);
-      localStorage.setItem('pending_customer', JSON.stringify(customers[0]));
-      
-      setAuthState(prev => ({ 
-        ...prev, 
-        otpSent: true, 
-        pendingPhone: cleanPhone,
-        isLoading: false 
-      }));
-
-      toast({
-        title: "OTP Sent",
-        description: "Please check your phone for the verification code.",
-      });
-
-      return { success: true };
-    } catch (error) {
-      console.error('Error sending OTP:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send OTP. Please try again.",
-        variant: "destructive",
-      });
-      return { success: false };
-    } finally {
-      setAuthState(prev => ({ ...prev, isLoading: false }));
-    }
-  };
-
-  const verifyOTP = async (otp: string) => {
-    setAuthState(prev => ({ ...prev, isLoading: true }));
-    
-    try {
-      const storedOtp = localStorage.getItem('pending_otp');
-      const storedCustomer = localStorage.getItem('pending_customer');
-      
-      if (!storedOtp || !storedCustomer) {
-        toast({
-          title: "Session Expired",
-          description: "Please request a new OTP.",
-          variant: "destructive",
-        });
-        return { success: false };
-      }
-
-      if (otp !== storedOtp) {
-        toast({
-          title: "Invalid OTP",
-          description: "Please enter the correct verification code.",
-          variant: "destructive",
-        });
-        return { success: false };
-      }
-
-      const customer = JSON.parse(storedCustomer);
+      const customer = customers[0];
       
       setAuthState({
         customer: {
@@ -161,15 +77,10 @@ export const useCustomerAuth = () => {
         },
         isAuthenticated: true,
         isLoading: false,
-        otpSent: false,
-        pendingPhone: '',
       });
 
       // Store authenticated customer
       localStorage.setItem('customer', JSON.stringify(customer));
-      // Clean up temporary storage
-      localStorage.removeItem('pending_otp');
-      localStorage.removeItem('pending_customer');
 
       toast({
         title: "Welcome!",
@@ -178,10 +89,10 @@ export const useCustomerAuth = () => {
 
       return { success: true };
     } catch (error) {
-      console.error('Error verifying OTP:', error);
+      console.error('Error authenticating user:', error);
       toast({
         title: "Error",
-        description: "Failed to verify OTP. Please try again.",
+        description: "Failed to authenticate user. Please try again.",
         variant: "destructive",
       });
       return { success: false };
@@ -195,12 +106,8 @@ export const useCustomerAuth = () => {
       customer: null,
       isAuthenticated: false,
       isLoading: false,
-      otpSent: false,
-      pendingPhone: '',
     });
     localStorage.removeItem('customer');
-    localStorage.removeItem('pending_otp');
-    localStorage.removeItem('pending_customer');
     toast({
       title: "Logged Out",
       description: "You have been successfully logged out.",
@@ -225,18 +132,9 @@ export const useCustomerAuth = () => {
     }
   };
 
-  const resendOTP = () => {
-    if (authState.pendingPhone) {
-      return sendOTP(authState.pendingPhone);
-    }
-    return { success: false };
-  };
-
   return {
     ...authState,
-    sendOTP,
-    verifyOTP,
-    resendOTP,
+    authenticateUser,
     logout,
     checkStoredAuth,
   };
