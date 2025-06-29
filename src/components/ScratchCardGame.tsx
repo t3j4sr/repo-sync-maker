@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
@@ -49,14 +50,29 @@ const ScratchCardGame = () => {
     if (!scratchCards) return;
 
     const card = scratchCards.scratch_cards.find(c => c.id === cardId);
-    if (!card || card.is_scratched) return;
+    if (!card) {
+      toast.error('Card not found');
+      return;
+    }
+
+    if (card.is_scratched) {
+      toast.error('This card has already been scratched');
+      return;
+    }
 
     const success = await scratchCard(cardId);
     if (success) {
-      // Automatically redirect to collection after 2 seconds
-      setTimeout(() => {
-        window.location.href = '/collection';
-      }, 2000);
+      // Refetch cards to get updated data
+      await refetchCards();
+      // Navigate to a different card if available
+      const availableCards = scratchCards.scratch_cards.filter(c => !c.is_scratched);
+      if (availableCards.length > 1) {
+        // Find next available card
+        const nextIndex = availableCards.findIndex(c => c.id !== cardId);
+        if (nextIndex !== -1) {
+          setSelectedCardIndex(nextIndex);
+        }
+      }
     }
   };
 

@@ -67,9 +67,24 @@ const CollectionPage = () => {
     if (!scratchCards) return;
 
     const card = scratchCards.scratch_cards.find(c => c.id === cardId);
-    if (!card || card.is_scratched) return;
+    if (!card) {
+      toast.error('Card not found');
+      return;
+    }
 
-    await scratchCard(cardId);
+    if (card.is_scratched) {
+      toast.error('This card has already been scratched');
+      return;
+    }
+
+    console.log('Revealing card:', cardId);
+    const success = await scratchCard(cardId);
+    
+    if (success) {
+      // Refetch the cards to get updated data
+      await refetchCards();
+      toast.success('Card revealed successfully!');
+    }
   };
 
   if (loading) {
@@ -242,8 +257,9 @@ const CollectionPage = () => {
                                 onClick={() => handleCardReveal(card.id)}
                                 className="mt-2 bg-yellow-500 hover:bg-yellow-600 text-black"
                                 size="sm"
+                                disabled={card.is_scratched}
                               >
-                                Reveal Prize
+                                {card.is_scratched ? 'Already Revealed' : 'Reveal Prize'}
                               </Button>
                             </div>
                           </div>

@@ -71,39 +71,7 @@ export const fetchCustomerScratchCards = async (phone: string): Promise<Customer
         throw new Error('Failed to load scratch cards');
       }
 
-      // If still no cards found, try a broader search
-      if (!allCards || allCards.length === 0) {
-        console.log('No cards found with customer IDs, trying broader search...');
-        
-        // Search all scratch cards and check if any belong to customers with matching phone
-        const { data: broadCards, error: broadCardsError } = await supabase
-          .from('scratch_cards')
-          .select(`
-            id,
-            discount_type,
-            discount_value,
-            created_at,
-            scratched_at,
-            expires_at,
-            is_scratched,
-            shop_name,
-            customers!inner(phone, name)
-          `)
-          .or(`customers.phone.eq.${cleanPhone},customers.phone.eq.+91${cleanPhone},customers.phone.eq.91${cleanPhone},customers.phone.like.%${cleanPhone}`)
-          .order('created_at', { ascending: false });
-
-        console.log('Broader search results:', broadCards);
-
-        if (broadCards && broadCards.length > 0) {
-          const cleanedCards = broadCards.map(cleanScratchCard);
-
-          return {
-            customer_id: customer.id,
-            customer_name: customer.name,
-            scratch_cards: cleanedCards
-          };
-        }
-      } else {
+      if (allCards && allCards.length > 0) {
         const cleanedAllCards = allCards.map(cleanScratchCard);
 
         return {
@@ -135,6 +103,25 @@ export const fetchCustomerScratchCards = async (phone: string): Promise<Customer
 export const scratchCardById = async (cardId: string): Promise<boolean> => {
   try {
     console.log('Attempting to scratch card:', cardId);
+    
+    // First check if card is already scratched
+    const { data: existingCard, error: checkError } = await supabase
+      .from('scratch_cards')
+      .select('is_scratched')
+      .eq('id', cardId)
+      .single();
+
+    if (checkError) {
+      console.error('Error checking card status:', checkError);
+      toast.error('Failed to check card status');
+      return false;
+    }
+
+    if (existingCard?.is_scratched) {
+      console.log('Card already scratched');
+      toast.error('Card has already been scratched');
+      return false;
+    }
     
     // Set scratch time to NOW and expiration time to exactly 60 minutes from NOW
     const scratchTime = new Date();
