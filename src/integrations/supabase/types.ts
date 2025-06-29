@@ -42,44 +42,6 @@ export type Database = {
         }
         Relationships: []
       }
-      customer_auth: {
-        Row: {
-          auth_user_id: string | null
-          created_at: string
-          customer_id: string
-          id: string
-          is_verified: boolean
-          phone: string
-          updated_at: string
-        }
-        Insert: {
-          auth_user_id?: string | null
-          created_at?: string
-          customer_id: string
-          id?: string
-          is_verified?: boolean
-          phone: string
-          updated_at?: string
-        }
-        Update: {
-          auth_user_id?: string | null
-          created_at?: string
-          customer_id?: string
-          id?: string
-          is_verified?: boolean
-          phone?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "customer_auth_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       customers: {
         Row: {
           created_at: string
@@ -174,37 +136,37 @@ export type Database = {
       }
       scratch_cards: {
         Row: {
-          code: string
           created_at: string
           customer_id: string
+          discount_type: string
+          discount_value: number | null
           expires_at: string | null
           id: string
           is_scratched: boolean
-          prize_type: string | null
-          prize_value: number | null
           scratched_at: string | null
+          shop_name: string
         }
         Insert: {
-          code: string
           created_at?: string
           customer_id: string
+          discount_type: string
+          discount_value?: number | null
           expires_at?: string | null
           id?: string
           is_scratched?: boolean
-          prize_type?: string | null
-          prize_value?: number | null
           scratched_at?: string | null
+          shop_name?: string
         }
         Update: {
-          code?: string
           created_at?: string
           customer_id?: string
+          discount_type?: string
+          discount_value?: number | null
           expires_at?: string | null
           id?: string
           is_scratched?: boolean
-          prize_type?: string | null
-          prize_value?: number | null
           scratched_at?: string | null
+          shop_name?: string
         }
         Relationships: [
           {
